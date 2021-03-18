@@ -12,3 +12,4 @@
 *.out
 *.mod
 *.sum
+.vscode/launch.json
