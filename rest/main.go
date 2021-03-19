@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -32,6 +33,11 @@ func main() {
 	router.HandleFunc("/", mainHandler)
 	router.HandleFunc("/posts/", postsHandler)
 	router.HandleFunc("/comments/", commentsHandler)
+
+	// echo
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go echoStart(ctx, "localhost:8081")
 
 	server := http.Server{
 		Handler: router,
@@ -101,6 +107,7 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
 			fmt.Fprintf(w, `{"id": %d}`, p.ID)
 		case http.MethodPut: //update post  in:json
 			reqBody, err := ioutil.ReadAll(r.Body)
@@ -123,7 +130,7 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprintf(w, `{"id": %d}`, p.ID)
 		default:
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	case rePostsID.Match([]byte(rPath)):
 		switch r.Method {
@@ -158,7 +165,7 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		default:
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	case rePostsComments.Match([]byte(rPath)):
 		switch r.Method {
@@ -181,7 +188,7 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 				cc.responseJSON(w, r)
 			}
 		default:
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	default:
 		w.Header().Set("Content-Type", "application/json")
@@ -247,6 +254,7 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
 			fmt.Fprintf(w, `{"id": %d}`, c.ID)
 		case http.MethodPut: // update comment in:json
 			reqBody, err := ioutil.ReadAll(r.Body)
@@ -269,7 +277,7 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprintf(w, `{"id": %d}`, c.ID)
 		default:
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	case reCommentsID.Match([]byte(rPath)):
 		switch r.Method {
@@ -304,7 +312,7 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		default:
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	default:
 		w.Header().Set("Content-Type", "application/json")
