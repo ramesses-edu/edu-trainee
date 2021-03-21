@@ -27,6 +27,13 @@ func (a *App) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
 	}
 }
 
+type user struct {
+	XMLName  xml.Name  `xml:"user" json:"-" gorm:"-"`
+	ID       int       `json:"id" gorm:"column:id;primaryKey"`
+	Posts    []post    `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID"`
+	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID"`
+}
+
 //////////////////////////////////////////////////////////////////////////////////////
 type posts struct {
 	XMLName xml.Name `xml:"posts" json:"-" gorm:"-"`
@@ -59,11 +66,12 @@ func (pp *posts) responseXML(w http.ResponseWriter, r *http.Request) {
 
 /////////////////////////////////////////////////////////////////////////////////////////
 type post struct {
-	XMLName xml.Name `xml:"post" json:"-" gorm:"-"`
-	UserID  int      `json:"userId" gorm:"column:userId"`
-	ID      int      `json:"id" gorm:"column:id;primaryKey"`
-	Title   string   `json:"title" gorm:"column:title;type:VARCHAR(256)"`
-	Body    string   `json:"body" gorm:"column:body;type:VARCHAR(256)"`
+	XMLName  xml.Name  `xml:"post" json:"-" gorm:"-"`
+	UserID   int       `json:"userId" gorm:"column:userId"`
+	ID       int       `json:"id" gorm:"column:id;primaryKey"`
+	Title    string    `json:"title" gorm:"column:title;type:VARCHAR(256)"`
+	Body     string    `json:"body" gorm:"column:body;type:VARCHAR(256)"`
+	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:PostID;references:ID"`
 }
 
 func (p *post) createPost(db *gorm.DB) *gorm.DB {
@@ -111,6 +119,7 @@ func (cc *comments) responseXML(w http.ResponseWriter, r *http.Request) {
 type comment struct {
 	XMLName xml.Name `xml:"comment" json:"-" gorm:"-"`
 	PostID  int      `json:"postId" gorm:"column:postId"`
+	UserID  int      `json:"userId" gorm:"column:userId"`
 	ID      int      `json:"id" gorm:"column:id;primaryKey"`
 	Name    string   `json:"name" gorm:"column:name;type:VARCHAR(256)"`
 	Email   string   `json:"email" gorm:"column:email;type:VARCHAR(256)"`
@@ -118,14 +127,14 @@ type comment struct {
 }
 
 func (c *comment) createComment(db *gorm.DB) *gorm.DB {
-	return db.Select("PostID", "Name", "Email", "Body").Create(&c)
+	return db.Select("PostID", "UserID", "Name", "Email", "Body").Create(&c)
 }
 func (c *comment) updateComment(db *gorm.DB) *gorm.DB {
 	reEmail := regexp.MustCompile(`^[^@]+@[^@]+\.\w{1,5}$`)
 	if c.Email != "" && !reEmail.Match([]byte(c.Email)) {
 		return &gorm.DB{Error: gorm.ErrInvalidValue}
 	}
-	return db.Model(&c).Updates(comment{PostID: c.PostID, Name: c.Name, Email: c.Email, Body: c.Body})
+	return db.Model(&c).Updates(comment{PostID: c.PostID, UserID: c.UserID, Name: c.Name, Email: c.Email, Body: c.Body})
 }
 func (c *comment) deleteComment(db *gorm.DB) *gorm.DB {
 	return db.Delete(&c)
