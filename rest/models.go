@@ -25,11 +25,22 @@ func (a *App) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if !a.db.Migrator().HasTable(&user{}) {
+		a.db.Migrator().CreateTable(&user{})
+	}
+	if !a.db.Migrator().HasTable(&post{}) {
+		a.db.Migrator().CreateTable(&post{})
+	}
+	if !a.db.Migrator().HasTable(&comment{}) {
+		a.db.Migrator().CreateTable(&comment{})
+	}
 }
 
 type user struct {
 	XMLName  xml.Name  `xml:"user" json:"-" gorm:"-"`
 	ID       int       `json:"id" gorm:"column:id;primaryKey"`
+	Login    string    `json:"login" gorm:"column:login;unique"`
+	Name     string    `jsin:"name" gorm:"column:name"`
 	Posts    []post    `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID"`
 	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID"`
 }
