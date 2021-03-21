@@ -27,22 +27,34 @@ func (a *App) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
 	}
 	if !a.db.Migrator().HasTable(&user{}) {
 		a.db.Migrator().CreateTable(&user{})
+	} else {
+		if !a.db.Migrator().HasConstraint(&user{}, "Posts") {
+			a.db.Migrator().CreateConstraint(&user{}, "Posts")
+		}
+		if !a.db.Migrator().HasConstraint(&user{}, "Comments") {
+			a.db.Migrator().CreateConstraint(&user{}, "Comments")
+		}
 	}
 	if !a.db.Migrator().HasTable(&post{}) {
 		a.db.Migrator().CreateTable(&post{})
+	} else {
+		if !a.db.Migrator().HasConstraint(&post{}, "Comments") {
+			a.db.Migrator().CreateConstraint(&post{}, "Comments")
+		}
 	}
 	if !a.db.Migrator().HasTable(&comment{}) {
 		a.db.Migrator().CreateTable(&comment{})
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////
 type user struct {
 	XMLName  xml.Name  `xml:"user" json:"-" gorm:"-"`
 	ID       int       `json:"id" gorm:"column:id;primaryKey"`
 	Login    string    `json:"login" gorm:"column:login;unique"`
 	Name     string    `jsin:"name" gorm:"column:name"`
-	Posts    []post    `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID"`
-	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID"`
+	Posts    []post    `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +94,7 @@ type post struct {
 	ID       int       `json:"id" gorm:"column:id;primaryKey"`
 	Title    string    `json:"title" gorm:"column:title;type:VARCHAR(256)"`
 	Body     string    `json:"body" gorm:"column:body;type:VARCHAR(256)"`
-	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:PostID;references:ID"`
+	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:PostID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
 func (p *post) createPost(db *gorm.DB) *gorm.DB {
