@@ -25,8 +25,22 @@ func (a *App) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	//////////////////////////////////////////////////////////////
+	if !a.db.Migrator().HasTable(&comment{}) {
+		a.db.Migrator().CreateTable(&comment{})
+	}
+	if !a.db.Migrator().HasTable(&post{}) {
+		a.db.Migrator().CreateTable(&post{})
+		a.db.Migrator().CreateConstraint(&post{}, "Comments")
+	} else {
+		if !a.db.Migrator().HasConstraint(&post{}, "Comments") {
+			a.db.Migrator().CreateConstraint(&post{}, "Comments")
+		}
+	}
 	if !a.db.Migrator().HasTable(&user{}) {
 		a.db.Migrator().CreateTable(&user{})
+		a.db.Migrator().CreateConstraint(&user{}, "Posts")
+		a.db.Migrator().CreateConstraint(&user{}, "Comments")
 	} else {
 		if !a.db.Migrator().HasConstraint(&user{}, "Posts") {
 			a.db.Migrator().CreateConstraint(&user{}, "Posts")
@@ -34,16 +48,6 @@ func (a *App) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
 		if !a.db.Migrator().HasConstraint(&user{}, "Comments") {
 			a.db.Migrator().CreateConstraint(&user{}, "Comments")
 		}
-	}
-	if !a.db.Migrator().HasTable(&post{}) {
-		a.db.Migrator().CreateTable(&post{})
-	} else {
-		if !a.db.Migrator().HasConstraint(&post{}, "Comments") {
-			a.db.Migrator().CreateConstraint(&post{}, "Comments")
-		}
-	}
-	if !a.db.Migrator().HasTable(&comment{}) {
-		a.db.Migrator().CreateTable(&comment{})
 	}
 }
 

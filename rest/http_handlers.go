@@ -9,6 +9,8 @@ import (
 	"strconv"
 )
 
+var reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
+
 func mainHandler(w http.ResponseWriter, r *http.Request) {
 
 }
