@@ -58,7 +58,7 @@ func main() {
 	router.HandleFunc("/swagger/", httpSwagger.Handler(
 		httpSwagger.URL("127.0.0.1/swagger/doc.json"),
 	))
-
+	//
 	//router.Handle("/login", middleware(http.HandlerFunc(postsHandler))) // may midw1(midw2(final))
 
 	// echo
