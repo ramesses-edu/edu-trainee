@@ -1,0 +1,320 @@
+basePath: /
+definitions:
+  main.comment:
+    properties:
+      body:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      postId:
+        type: integer
+      userId:
+        type: integer
+    type: object
+  main.createCommentStruct:
+    properties:
+      body:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      postId:
+        type: integer
+      userId:
+        type: integer
+    type: object
+  main.createPostStruct:
+    properties:
+      body:
+        type: string
+      title:
+        type: string
+      userId:
+        type: integer
+    type: object
+  main.post:
+    properties:
+      body:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+      userId:
+        type: integer
+    type: object
+host: 127.0.0.1:80
+info:
+  contact:
+    email: romgrishin@gmail.com
+    name: API Support
+  description: This is a education forum server.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Education Forum API
+  version: "1.0"
+paths:
+  /comments/:
+    get:
+      description: list comments with filtering
+      parameters:
+      - description: ID of post
+        in: query
+        name: postId
+        type: integer
+      - description: show data like XML
+        in: query
+        name: xml
+        type: string
+      responses:
+        "200":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: List comments
+    post:
+      consumes:
+      - application/json
+      description: create comment
+      parameters:
+      - description: JSON structure for creating post
+        in: body
+        name: RequestPost
+        required: true
+        schema:
+          $ref: '#/definitions/main.createCommentStruct'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "201":
+          description: ""
+        "400":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: Create comment
+    put:
+      consumes:
+      - application/json
+      description: update comment
+      parameters:
+      - description: JSON structure for creating post
+        in: body
+        name: RequestPost
+        required: true
+        schema:
+          $ref: '#/definitions/main.comment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: Update comment
+  /comments/{id}:
+    delete:
+      parameters:
+      - description: ID of deleting comment
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: Delete comment
+    get:
+      description: Get comment by ID
+      parameters:
+      - description: ID of comment
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: show data like XML
+        in: query
+        name: xml
+        type: string
+      responses:
+        "200":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: Show comment
+  /posts/:
+    get:
+      description: get posts
+      parameters:
+      - description: posts filter by user
+        in: query
+        name: userId
+        type: integer
+      - description: show data like XML
+        in: query
+        name: xml
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+        "404":
+          description: ""
+        "500":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: List posts
+    post:
+      consumes:
+      - application/json
+      description: create post
+      parameters:
+      - description: JSON structure for creating post
+        in: body
+        name: RequestPost
+        required: true
+        schema:
+          $ref: '#/definitions/main.createPostStruct'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "201":
+          description: ""
+        "400":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: Create post
+    put:
+      consumes:
+      - application/json
+      description: update post
+      parameters:
+      - description: JSON structure for updating post
+        in: body
+        name: RequestPost
+        required: true
+        schema:
+          $ref: '#/definitions/main.post'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: Update post
+  /posts/{id}:
+    delete:
+      description: delete post by ID
+      parameters:
+      - description: ID of deleting post
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: Delete post
+    get:
+      description: get post by ID
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: show data like XML
+        in: query
+        name: xml
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+        "404":
+          description: ""
+        "500":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: Show a posts
+  /posts/{id}/comments:
+    get:
+      description: List comments like request /comments?postId={id}
+      parameters:
+      - description: ID of post
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: show data like XML
+        in: query
+        name: xml
+        type: string
+      responses:
+        "200":
+          description: ""
+        default:
+          description: ""
+      security:
+      - OAuth2AccessCode: []
+      summary: List comments of post
+securityDefinitions:
+  OAuth2AccessCode:
+    authorizationUrl: https://example.com/oauth/authorize
+    flow: accessCode
+    tokenUrl: https://example.com/oauth/token
+    type: oauth2
+  OAuth2Application:
+    flow: application
+    tokenUrl: https://example.com/oauth/token
+    type: oauth2
+swagger: "2.0"

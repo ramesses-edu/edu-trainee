@@ -67,9 +67,10 @@ type posts struct {
 	Posts   []post
 }
 
-func (pp *posts) getPosts(db *gorm.DB, param map[string]interface{}) *gorm.DB {
+func (pp *posts) listPosts(db *gorm.DB, param map[string]interface{}) *gorm.DB {
 	return db.Where(param).Find(&pp.Posts)
 }
+
 func (pp *posts) responseJSON(w http.ResponseWriter, r *http.Request) {
 	jsonB, err := json.MarshalIndent(pp.Posts, "", "  ")
 	if err != nil {
@@ -101,7 +102,14 @@ type post struct {
 	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:PostID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
+func (p *post) getPost(db *gorm.DB, param map[string]interface{}) *gorm.DB {
+	return db.Where(param).First(&p)
+}
+
 func (p *post) createPost(db *gorm.DB) *gorm.DB {
+	if p.UserID == 0 {
+		return db.Select("Title", "Body").Create(&p)
+	}
 	return db.Select("UserID", "Title", "Body").Create(&p)
 }
 func (p *post) updatePost(db *gorm.DB) *gorm.DB {
@@ -117,7 +125,7 @@ type comments struct {
 	Comments []comment
 }
 
-func (cc *comments) getComments(db *gorm.DB, param map[string]interface{}) *gorm.DB {
+func (cc *comments) listComments(db *gorm.DB, param map[string]interface{}) *gorm.DB {
 	return db.Where(param).Find(&cc.Comments)
 }
 func (cc *comments) responseJSON(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +161,24 @@ type comment struct {
 	Body    string   `json:"body" gorm:"column:body;type:VARCHAR(256)"`
 }
 
+func (c *comment) getComment(db *gorm.DB, param map[string]interface{}) *gorm.DB {
+	return db.Where(param).First(&c)
+}
+
 func (c *comment) createComment(db *gorm.DB) *gorm.DB {
+	reEmail := regexp.MustCompile(`^[^@]+@[^@]+\.\w{1,5}$`)
+	if c.Email != "" && !reEmail.Match([]byte(c.Email)) {
+		return &gorm.DB{Error: gorm.ErrInvalidValue}
+	}
+	if c.PostID == 0 && c.UserID == 0 {
+		return db.Select("Name", "Email", "Body").Create(&c)
+	}
+	if c.PostID == 0 {
+		db.Select("UserID", "Name", "Email", "Body").Create(&c)
+	}
+	if c.UserID == 0 {
+		db.Select("PostID", "Name", "Email", "Body").Create(&c)
+	}
 	return db.Select("PostID", "UserID", "Name", "Email", "Body").Create(&c)
 }
 func (c *comment) updateComment(db *gorm.DB) *gorm.DB {

@@ -54,7 +54,7 @@ func listPosts(c echo.Context) error {
 		}
 	}
 	var pp posts
-	result := pp.getPosts(a.db, param)
+	result := pp.listPosts(a.db, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -76,11 +76,12 @@ func getPostById(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "")
 	}
-	var pp posts
-	result := pp.getPosts(a.db, param)
+	var p post
+	result := p.getPost(a.db, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
+	var pp posts = posts{Posts: []post{p}}
 	if respXML {
 		return c.XML(http.StatusOK, &pp)
 	}
@@ -100,7 +101,7 @@ func listPostComments(c echo.Context) error {
 	}
 	param["postId"] = postId
 	var cc comments
-	result := cc.getComments(a.db, param)
+	result := cc.listComments(a.db, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -171,7 +172,7 @@ func listComments(c echo.Context) error {
 		}
 	}
 	var cc comments
-	result := cc.getComments(a.db, param)
+	result := cc.listComments(a.db, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -193,11 +194,12 @@ func getCommentByID(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "")
 	}
-	var cc comments
-	result := cc.getComments(a.db, param)
+	var cmnt comment
+	result := cmnt.getComment(a.db, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
+	var cc comments = comments{Comments: []comment{cmnt}}
 	if respXML {
 		return c.XML(http.StatusOK, &cc)
 	}

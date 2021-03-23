@@ -19,18 +19,27 @@ var (
 	a      App
 )
 
-// @title Blueprint Swagger API
+// @title Education Forum API
 // @version 1.0
-// @description Swagger API for Golang Project Blueprint.
+// @description This is a education forum server.
 // @termsOfService http://swagger.io/terms/
 
 // @contact.name API Support
-// @contact.email martin7.heinz@gmail.com
+// @contact.email romgrishin@gmail.com
 
-// @license.name MIT
-// @license.url https://github.com/MartinHeinz/go-project-blueprint/blob/master/LICENSE
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
+// @host 127.0.0.1:80
 // @BasePath /
+// @query.collection.format multi
+
+// @securitydefinitions.oauth2.application OAuth2Application
+// @tokenUrl https://example.com/oauth/token
+
+// @securitydefinitions.oauth2.accessCode OAuth2AccessCode
+// @tokenUrl https://example.com/oauth/token
+// @authorizationurl https://example.com/oauth/authorize
 func main() {
 	a = App{}
 	a.initApp(userDB, passDB, hostDB, portDB, nameDB)
@@ -45,10 +54,9 @@ func main() {
 	router.HandleFunc("/comments/", commentsHandler)
 
 	docs.SwaggerInfo.BasePath = "/"
-	docs.SwaggerInfo.Schemes = []string{"http", "https"}
+	docs.SwaggerInfo.Schemes = []string{"http"}
 	router.HandleFunc("/swagger/", httpSwagger.Handler(
-		httpSwagger.URL("swagger.json"),
-		httpSwagger.DeepLinking(true),
+		httpSwagger.URL("127.0.0.1/swagger/doc.json"),
 	))
 
 	//router.Handle("/login", middleware(http.HandlerFunc(postsHandler))) // may midw1(midw2(final))
