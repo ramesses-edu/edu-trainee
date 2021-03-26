@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -56,9 +57,20 @@ type user struct {
 	XMLName  xml.Name  `xml:"user" json:"-" gorm:"-"`
 	ID       int       `json:"id" gorm:"column:id;primaryKey"`
 	Login    string    `json:"login" gorm:"column:login;unique"`
-	Name     string    `jsin:"name" gorm:"column:name"`
+	Name     string    `json:"name" gorm:"column:name"`
+	Provider string    `json:"-" xml:"-" gorm:"column:provider"`
+	Token    string    `json:"-" xml:"-" gorm:"column:token"`
 	Posts    []post    `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+}
+
+func (u *user) getUserByProviderToken(db *gorm.DB, provider, token string) *gorm.DB {
+	param := map[string]interface{}{"provider": provider, "token": token}
+	return db.Where(param).First(&u)
+}
+func (u *user) getUserByLoginProvider(db *gorm.DB, provider, login string) *gorm.DB {
+	param := map[string]interface{}{"provider": provider, "login": login}
+	return db.Where(param).First(&u)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -116,7 +128,7 @@ func (p *post) updatePost(db *gorm.DB) *gorm.DB {
 	return db.Model(&p).Updates(post{UserID: p.UserID, Title: p.Title, Body: p.Body})
 }
 func (p *post) deletePost(db *gorm.DB) *gorm.DB {
-	return db.Delete(&p)
+	return db.Where("userId = ?", strconv.Itoa(p.UserID)).Delete(&p)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -189,5 +201,5 @@ func (c *comment) updateComment(db *gorm.DB) *gorm.DB {
 	return db.Model(&c).Updates(comment{PostID: c.PostID, UserID: c.UserID, Name: c.Name, Email: c.Email, Body: c.Body})
 }
 func (c *comment) deleteComment(db *gorm.DB) *gorm.DB {
-	return db.Delete(&c)
+	return db.Where("userId = ?", strconv.Itoa(c.UserID)).Delete(&c)
 }

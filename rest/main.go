@@ -30,7 +30,7 @@ var (
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host 127.0.0.1:80
+// @host localhost:80
 // @BasePath /
 // @query.collection.format multi
 
@@ -49,17 +49,17 @@ func main() {
 	}
 	defer sql.Close()
 	router := http.NewServeMux()
-	router.HandleFunc("/", mainHandler)
-	router.HandleFunc("/posts/", postsHandler)
-	router.HandleFunc("/comments/", commentsHandler)
+	router.Handle("/", http.FileServer(http.Dir("./static")))
+	router.Handle("/auth/", mwAuthentification())
+	//	router.Handle("/callback/", nil)
+	router.Handle("/posts/", mwAutorization(mwValidateToken(http.HandlerFunc(postsHandler))))
+	router.Handle("/comments/", mwAutorization(mwValidateToken(http.HandlerFunc(commentsHandler))))
 
 	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"http"}
 	router.HandleFunc("/swagger/", httpSwagger.Handler(
-		httpSwagger.URL("127.0.0.1/swagger/doc.json"),
+		httpSwagger.URL("localhost/swagger/doc.json"),
 	))
-	//
-	//router.Handle("/login", middleware(http.HandlerFunc(postsHandler))) // may midw1(midw2(final))
 
 	// echo
 	ctx, cancel := context.WithCancel(context.Background())
@@ -72,11 +72,3 @@ func main() {
 	}
 	server.ListenAndServe()
 }
-
-// func middleware(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		// logic code or return
-// 		next.ServeHTTP(w, r)
-// 		// logic code or return
-// 	})
-// }

@@ -11,21 +11,23 @@ import (
 
 var reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
 
-func mainHandler(w http.ResponseWriter, r *http.Request) {
-
-}
+// func mainHandler(w http.ResponseWriter, r *http.Request) {
+// 	file, _ := os.OpenFile("./static/index.html", os.O_RDONLY, fs.ModePerm)
+// 	defer file.Close()
+// 	fileBody, _ := ioutil.ReadAll(file)
+// 	fmt.Fprintln(w, string(fileBody))
+// }
 
 func responseXML(r *http.Request) bool {
-	respXML := false
 	for key := range r.Form {
 		if key == "xml" {
-			respXML = true
+			return true
 		}
 	}
-	return respXML
+	return false
 }
 
-func postsHandler(w http.ResponseWriter, r *http.Request) {
+func postsHandler(w http.ResponseWriter, r *http.Request) {	
 	r.ParseForm()
 	rPath := r.URL.Path
 	rePostsComments := regexp.MustCompile(`^\/posts\/\d+\/comments(\/)??$`)
@@ -136,9 +138,8 @@ func getPostByIDHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type createPostStruct struct {
-	Title  string
-	Body   string
-	UserID int `json:"userId"`
+	Title string
+	Body  string
 }
 
 //@Summary Create post
@@ -152,6 +153,10 @@ type createPostStruct struct {
 //@Router /posts/ [POST]
 //@Security OAuth2AccessCode
 func createPostHTTP(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Cookie("uid")
+	provider, _ := r.Cookie("provider")
+	u := getCurrentUser(a.db, uid.Value, provider.Value)
+
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -164,6 +169,7 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	p.UserID = u.ID
 	result := p.createPost(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -186,6 +192,9 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/ [put]
 //@Security OAuth2AccessCode
 func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Cookie("uid")
+	provider, _ := r.Cookie("provider")
+	u := getCurrentUser(a.db, uid.Value, provider.Value)
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -198,6 +207,7 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	p.UserID = u.ID
 	result := p.updatePost(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -216,12 +226,15 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/{id} [delete]
 //@Security OAuth2AccessCode
 func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Cookie("uid")
+	provider, _ := r.Cookie("provider")
+	u := getCurrentUser(a.db, uid.Value, provider.Value)
 	pID, err := strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	var p post = post{ID: pID}
+	var p post = post{ID: pID, UserID: u.ID}
 	result := p.deletePost(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -356,7 +369,6 @@ func getCommentByIDHTTP(w http.ResponseWriter, r *http.Request) {
 
 type createCommentStruct struct {
 	PostID int `json:"postId"`
-	UserID int `json:"userId"`
 	Name   string
 	Email  string
 	Body   string
@@ -373,6 +385,9 @@ type createCommentStruct struct {
 //@Router /comments/ [post]
 //@Security OAuth2AccessCode
 func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Cookie("uid")
+	provider, _ := r.Cookie("provider")
+	u := getCurrentUser(a.db, uid.Value, provider.Value)
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -385,6 +400,7 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	c.UserID = u.ID
 	result := c.createComment(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -407,6 +423,9 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/ [put]
 //@Security OAuth2AccessCode
 func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Cookie("uid")
+	provider, _ := r.Cookie("provider")
+	u := getCurrentUser(a.db, uid.Value, provider.Value)
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -419,6 +438,7 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	c.UserID = u.ID
 	result := c.updateComment(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -437,12 +457,15 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/{id} [delete]
 //@Security OAuth2AccessCode
 func deleteCommentHTTP(w http.ResponseWriter, r *http.Request) {
+	uid, _ := r.Cookie("uid")
+	provider, _ := r.Cookie("provider")
+	u := getCurrentUser(a.db, uid.Value, provider.Value)
 	cID, err := strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	var c comment = comment{ID: cID}
+	var c comment = comment{ID: cID, UserID: u.ID}
 	result := c.deleteComment(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)

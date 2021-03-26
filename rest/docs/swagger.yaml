@@ -48,7 +48,7 @@ definitions:
       userId:
         type: integer
     type: object
-host: 127.0.0.1:80
+host: localhost:80
 info:
   contact:
     email: romgrishin@gmail.com
