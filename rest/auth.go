@@ -1,60 +1,82 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/base64"
+	"math/rand"
 	"net/http"
 	"regexp"
+	"time"
 
 	"gorm.io/gorm"
 )
 
-func mwAutorization(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-		// _, err := r.Cookie("uid")
-		// if err != nil {
-		// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		// 	return
-		// }
-		// _, err = r.Cookie("provider")
-		// if err != nil {
-		// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		// 	return
-		// }
-		// _, err = r.Cookie("token")
-		// if err != nil {
-		// 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		// 	return
-		// }
-		// next.ServeHTTP(w, r)
-	})
+func generateOauthStateProvider() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	state := base64.URLEncoding.EncodeToString(b)
+	return state
 }
-func mwValidateToken(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-		// provider, _ := r.Cookie("provider")
-		// token, _ := r.Cookie("token")
-		// switch provider.Value {
-		// case "google":
-		// 	r.Form.Add(token.Value, token.Value)
-		// 	// провести exchange
-		// 	// запросить пользователя(при необходимости зарегить)  либо выбросить на авторизацию
-		// 	// отдать на манипуляцию с данными
-		// case "facebook":
-		// case "twitter":
-		// default:
-		// 	w.WriteHeader(http.StatusNetworkAuthenticationRequired)
-		// 	return
-		// }
-	})
+func generateAccessToken() string {
+	b := make([]byte, 64)
+	rand.Read(b)
+	state := base64.URLEncoding.EncodeToString(b)
+	return state
 }
-func getCurrentUser(db *gorm.DB, uid, provider string) user {
+func calculateSignature(base, key string) string {
+	hash := hmac.New(sha1.New, []byte(key))
+	hash.Write([]byte(base))
+	signature := hash.Sum(nil)
+	return base64.StdEncoding.EncodeToString(signature)
+}
+func getCurrentUser(db *gorm.DB, r *http.Request) user {
+	accTokenC, err := r.Cookie("UAAT")
+	if err != nil {
+		return user{}
+	}
+	accToken := calculateSignature(accTokenC.Value, "provider")
 	var u user
-	result := u.getUserByLoginProvider(db, provider, uid)
+	result := u.getUser(db, map[string]interface{}{
+		"access_token": accToken,
+	})
 	if result.Error != nil || result.RowsAffected == 0 {
 		return user{}
 	}
 	return u
 }
+
+func mwAutorization(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		accessToken := ""
+		accessTokenCookie, err := r.Cookie("UAAT")
+		if err == nil {
+			accessToken = accessTokenCookie.Value
+		}
+		if accessToken == "" {
+			accessToken = r.Header.Get("APIKey")
+		}
+		if accessToken == "" {
+			cookieRedirect := http.Cookie{Name: "redirect", Value: r.URL.Path, Path: "/", Expires: time.Now().Add(5 * time.Minute)}
+			http.SetCookie(w, &cookieRedirect)
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return
+		}
+		hashAccTok := calculateSignature(accessToken, "provider")
+		var u user
+		result := u.getUser(a.db, map[string]interface{}{
+			"access_token": hashAccTok,
+		})
+		if result.Error != nil || result.RowsAffected == 0 {
+			cookieRedirect := http.Cookie{Name: "redirect", Value: r.URL.Path, Path: "/", Expires: time.Now().Add(5 * time.Minute)}
+			http.SetCookie(w, &cookieRedirect)
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func mwAuthentification() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rPath := r.URL.Path

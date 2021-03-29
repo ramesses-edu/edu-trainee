@@ -2,9 +2,7 @@ package main
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -33,7 +31,6 @@ func buildAuthHeader(method, path string, params map[string]string) string {
 	for k, v := range params {
 		vals.Set(k, v)
 	}
-	//fmt.Println("oauth_token buildHeader: " + vals.Get("oauth_token"))
 	parameterString := strings.Replace(vals.Encode(), "+", "%20", -1)
 	signatureBase := strings.ToUpper(method) + "&" + url.QueryEscape(path) + "&" + url.QueryEscape(parameterString)
 	signingKey := url.QueryEscape(twitterAPISecret) + "&" + url.QueryEscape(twitterTokenSecret)
@@ -45,12 +42,7 @@ func buildAuthHeader(method, path string, params map[string]string) string {
 	}
 	return strings.TrimRight(returnString, ",")
 }
-func calculateSignature(base, key string) string {
-	hash := hmac.New(sha1.New, []byte(key))
-	hash.Write([]byte(base))
-	signature := hash.Sum(nil)
-	return base64.StdEncoding.EncodeToString(signature)
-}
+
 func generateNonce() string {
 	const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, 48)
@@ -74,8 +66,7 @@ func authTwitter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if resp.StatusCode != 200 {
-		w.Write([]byte(resp.Status))
-		//http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 	respBody, err := ioutil.ReadAll(resp.Body)
@@ -90,35 +81,32 @@ func authTwitter(w http.ResponseWriter, r *http.Request) {
 		datav := strings.Split(v, "=")
 		dataMap[datav[0]] = datav[1]
 	}
-	respToken := dataMap["oauth_token"]
-	cookie := http.Cookie{Name: "oauthstate", Value: respToken, Expires: time.Now().Add(24 * time.Hour)}
+	stateToken := dataMap["oauth_token"]
+	cookie := http.Cookie{Name: "oauthstate", Value: stateToken, Expires: time.Now().Add(5 * time.Minute)}
 	http.SetCookie(w, &cookie)
-	//fmt.Println("Request token: " + respToken)
-	urlAuthUser := "https://api.twitter.com/oauth/authenticate?oauth_token="
-	http.Redirect(w, r, urlAuthUser+respToken, http.StatusFound)
+	/////////////////////////////////////////////////////////
+	urlAuthUser := "https://api.twitter.com/oauth/authenticate?oauth_token=" + stateToken
+	http.Redirect(w, r, urlAuthUser, http.StatusFound)
 }
 
 func callbackTwitter(w http.ResponseWriter, r *http.Request) {
-	//fmt.Fprintf(w, "oauth_token=%s \n oauth_verifier=%s", r.FormValue("oauth_token"), )
-	//fmt.Printf("oauth_token=%s \n oauth_verifier=%s", r.FormValue("oauth_token"), r.FormValue("oauth_verifier"))
 	o_token := r.FormValue("oauth_token")
 	o_verifier := r.FormValue("oauth_verifier")
-	oauthstate, _ := r.Cookie("oauthstate")
-	if o_token != oauthstate.Value {
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
-
-	//
-	//	Как здесь определить валидность токена??
-
-	reqTokUrl := "https://api.twitter.com/oauth/access_token"
-	request, err := http.NewRequest(http.MethodPost, reqTokUrl, bytes.NewBuffer([]byte(fmt.Sprintf("oauth_verifier=%s", r.FormValue("oauth_verifier")))))
+	oauthstate, err := r.Cookie("oauthstate")
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-
+	if o_token != (oauthstate.Value) {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	reqTokUrl := "https://api.twitter.com/oauth/access_token"
+	request, err := http.NewRequest(http.MethodPost, reqTokUrl, bytes.NewBuffer([]byte(fmt.Sprintf("oauth_verifier=%s", o_verifier))))
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
 	autorize := buildAuthHeader(http.MethodPost, reqTokUrl,
 		map[string]string{"oauth_token": o_token, "oauth_verifier": o_verifier})
 	request.Header.Set("Authorization", autorize)
@@ -128,8 +116,7 @@ func callbackTwitter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if resp.StatusCode != 200 {
-		w.Write([]byte(resp.Status))
-		//http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 	respBody, err := ioutil.ReadAll(resp.Body)
@@ -138,29 +125,12 @@ func callbackTwitter(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	//fmt.Println(string(respBody))
 	dataMap := make(map[string]string)
 	data := strings.Split(string(respBody), "&")
 	for _, v := range data {
 		datav := strings.Split(v, "=")
 		dataMap[datav[0]] = datav[1]
-		fmt.Println(datav[0] + ": " + datav[1])
 	}
-	/*
-		oauth_token: 1374820281542438923-sbEtNgMwgTqhvJXFD3LBL2rSNXBTAE
-		oauth_token_secret: E9jp8WXrjLMkvF5vaAMOUtYD6hnPfpFUHN6mPMwK5vVf2
-		user_id: 1374820281542438923
-		screen_name: Roman07334929
-
-		При ошибке: код 401
-	*/
-	var expiration = time.Now().Add(30 * 24 * time.Hour)
-	cookieProvider := http.Cookie{Name: "provider", Value: "twitter", Expires: expiration, Path: "/"}
-	cookieToken := http.Cookie{Name: "TASID", Value: dataMap["oauth_token"], Expires: expiration, Path: "/"}
-	//cookieUID := http.Cookie{Name: "SAUID", Value: dataMap["user_id"], Expires: expiration, Path: "/"}
-	http.SetCookie(w, &cookieProvider)
-	http.SetCookie(w, &cookieToken)
-	//http.SetCookie(w, &cookieUID)
 
 	reqTokUrl = "https://api.twitter.com/1.1/account/verify_credentials.json"
 	request, err = http.NewRequest(http.MethodGet, reqTokUrl, nil)
@@ -169,7 +139,7 @@ func callbackTwitter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	autorize = buildAuthHeader(http.MethodGet, reqTokUrl,
-		map[string]string{})
+		map[string]string{"oauth_token": dataMap["oauth_token"]})
 	request.Header.Set("Authorization", autorize)
 	resp, err = http.DefaultClient.Do(request)
 	if err != nil {
@@ -177,8 +147,7 @@ func callbackTwitter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if resp.StatusCode != 200 {
-		w.Write([]byte(resp.Status))
-		//http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 	respBody, err = ioutil.ReadAll(resp.Body)
@@ -187,5 +156,53 @@ func callbackTwitter(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	fmt.Println(string(respBody))
+	//decode answer JSON to map
+	var respMap map[string]interface{} = make(map[string]interface{})
+	err = json.Unmarshal(respBody, &respMap)
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	//check request error
+	if _, ok := respMap["errors"]; ok {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	//generate new accessToken for user
+	accessToken := generateAccessToken()
+	hashAccToken := calculateSignature(accessToken, "provider")
+	//check user registration
+	var u user
+	result := u.getUser(a.db, map[string]interface{}{
+		"login":    respMap["id_str"].(string),
+		"provider": "twitter",
+	})
+	//if user not found, register new user
+	if result.Error != nil || result.RowsAffected == 0 {
+		u = user{
+			Login:       respMap["id_str"].(string),
+			Provider:    "twitter",
+			Name:        respMap["name"].(string),
+			AccessToken: hashAccToken,
+		}
+		result = u.createUser(a.db)
+	} else {
+		u.AccessToken = hashAccToken
+		u.updateAccessToken(a.db)
+	}
+	//write cookies
+	if result.Error == nil {
+		var expiration = time.Now().Add(30 * 24 * time.Hour)
+		cookieUID := http.Cookie{Name: "UAAT", Value: accessToken, Expires: expiration, Path: "/"}
+		http.SetCookie(w, &cookieUID)
+	}
+	redirectCookie, err := r.Cookie("redirect")
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+	} else {
+		redirURL := redirectCookie.Value
+		redirectCookie.MaxAge = -1
+		http.SetCookie(w, redirectCookie)
+		http.Redirect(w, r, redirURL, http.StatusTemporaryRedirect)
+	}
 }

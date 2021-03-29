@@ -21,7 +21,7 @@
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "list comments with filtering",
@@ -52,7 +52,7 @@
             "put": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "update comment",
@@ -89,7 +89,7 @@
             "post": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "create comment",
@@ -131,7 +131,7 @@
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "Get comment by ID",
@@ -163,7 +163,7 @@
             "delete": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "summary": "Delete comment",
@@ -190,7 +190,7 @@
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "get posts",
@@ -233,7 +233,7 @@
             "put": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "update post",
@@ -270,7 +270,7 @@
             "post": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "create post",
@@ -312,7 +312,7 @@
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "get post by ID",
@@ -356,7 +356,7 @@
             "delete": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "delete post by ID",
@@ -384,7 +384,7 @@
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "List comments like request /comments?postId={id}",
@@ -453,9 +453,6 @@
                 },
                 "postId": {
                     "type": "integer"
-                },
-                "userId": {
-                    "type": "integer"
                 }
             }
         },
@@ -467,9 +464,6 @@
                 },
                 "title": {
                     "type": "string"
-                },
-                "userId": {
-                    "type": "integer"
                 }
             }
         },
@@ -492,16 +486,10 @@
         }
     },
     "securityDefinitions": {
-        "OAuth2AccessCode": {
-            "type": "oauth2",
-            "flow": "accessCode",
-            "authorizationUrl": "https://example.com/oauth/authorize",
-            "tokenUrl": "https://example.com/oauth/token"
-        },
-        "OAuth2Application": {
-            "type": "oauth2",
-            "flow": "application",
-            "tokenUrl": "https://example.com/oauth/token"
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "APIKey",
+            "in": "header"
         }
     }
 }

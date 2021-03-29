@@ -36,7 +36,7 @@ var doc = `{
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "list comments with filtering",
@@ -67,7 +67,7 @@ var doc = `{
             "put": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "update comment",
@@ -104,7 +104,7 @@ var doc = `{
             "post": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "create comment",
@@ -146,7 +146,7 @@ var doc = `{
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "Get comment by ID",
@@ -178,7 +178,7 @@ var doc = `{
             "delete": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "summary": "Delete comment",
@@ -205,7 +205,7 @@ var doc = `{
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "get posts",
@@ -248,7 +248,7 @@ var doc = `{
             "put": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "update post",
@@ -285,7 +285,7 @@ var doc = `{
             "post": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "create post",
@@ -327,7 +327,7 @@ var doc = `{
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "get post by ID",
@@ -371,7 +371,7 @@ var doc = `{
             "delete": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "delete post by ID",
@@ -399,7 +399,7 @@ var doc = `{
             "get": {
                 "security": [
                     {
-                        "OAuth2AccessCode": []
+                        "ApiKeyAuth": []
                     }
                 ],
                 "description": "List comments like request /comments?postId={id}",
@@ -468,9 +468,6 @@ var doc = `{
                 },
                 "postId": {
                     "type": "integer"
-                },
-                "userId": {
-                    "type": "integer"
                 }
             }
         },
@@ -482,9 +479,6 @@ var doc = `{
                 },
                 "title": {
                     "type": "string"
-                },
-                "userId": {
-                    "type": "integer"
                 }
             }
         },
@@ -507,16 +501,10 @@ var doc = `{
         }
     },
     "securityDefinitions": {
-        "OAuth2AccessCode": {
-            "type": "oauth2",
-            "flow": "accessCode",
-            "authorizationUrl": "https://example.com/oauth/authorize",
-            "tokenUrl": "https://example.com/oauth/token"
-        },
-        "OAuth2Application": {
-            "type": "oauth2",
-            "flow": "application",
-            "tokenUrl": "https://example.com/oauth/token"
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "APIKey",
+            "in": "header"
         }
     }
 }`

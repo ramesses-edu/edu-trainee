@@ -25,8 +25,6 @@ definitions:
         type: string
       postId:
         type: integer
-      userId:
-        type: integer
     type: object
   main.createPostStruct:
     properties:
@@ -34,8 +32,6 @@ definitions:
         type: string
       title:
         type: string
-      userId:
-        type: integer
     type: object
   main.post:
     properties:
@@ -79,7 +75,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: List comments
     post:
       consumes:
@@ -104,7 +100,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: Create comment
     put:
       consumes:
@@ -127,7 +123,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: Update comment
   /comments/{id}:
     delete:
@@ -143,7 +139,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: Delete comment
     get:
       description: Get comment by ID
@@ -163,7 +159,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: Show comment
   /posts/:
     get:
@@ -191,7 +187,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: List posts
     post:
       consumes:
@@ -216,7 +212,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: Create post
     put:
       consumes:
@@ -239,7 +235,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: Update post
   /posts/{id}:
     delete:
@@ -256,7 +252,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: Delete post
     get:
       description: get post by ID
@@ -284,7 +280,7 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: Show a posts
   /posts/{id}/comments:
     get:
@@ -305,16 +301,11 @@ paths:
         default:
           description: ""
       security:
-      - OAuth2AccessCode: []
+      - ApiKeyAuth: []
       summary: List comments of post
 securityDefinitions:
-  OAuth2AccessCode:
-    authorizationUrl: https://example.com/oauth/authorize
-    flow: accessCode
-    tokenUrl: https://example.com/oauth/token
-    type: oauth2
-  OAuth2Application:
-    flow: application
-    tokenUrl: https://example.com/oauth/token
-    type: oauth2
+  ApiKeyAuth:
+    in: header
+    name: APIKey
+    type: apiKey
 swagger: "2.0"

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/facebook"
 )
 
 var (
@@ -19,9 +18,14 @@ var (
 		ClientID:     "346852496742371",
 		ClientSecret: "aa8338431fe3a7cfa79d9abce2812b95",
 		RedirectURL:  "http://localhost:80/auth/callback/facebook",
-		Scopes:       []string{"public_profile", "email", "user_friends"},
-		Endpoint:     facebook.Endpoint,
+		Scopes:       []string{"public_profile", "email"},
+		Endpoint:     facebookEndpoint,
 	}
+	facebookEndpoint oauth2.Endpoint = oauth2.Endpoint{
+		AuthURL:  fmt.Sprintf("https://www.facebook.com/%s/dialog/oauth", facebookAPIVersion),
+		TokenURL: fmt.Sprintf("https://graph.facebook.com/%s/oauth/access_token", facebookAPIVersion),
+	}
+	facebookAPIVersion = "v10.0"
 	oauthStateFaceBook = ""
 )
 
@@ -31,7 +35,10 @@ func authFacebook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	oauthStateFaceBook = generateStateOauthCookie(w)
+	oauthStateFaceBook = generateOauthStateProvider()
+	cookie := http.Cookie{Name: "oauthstate", Value: oauthStateFaceBook, Expires: time.Now().Add(5 * time.Minute)}
+	http.SetCookie(w, &cookie)
+	////////////////////////////////////////////////////
 	parameters := url.Values{}
 	parameters.Add("client_id", oauthFacebook.ClientID)
 	parameters.Add("scope", strings.Join(oauthFacebook.Scopes, " "))
@@ -50,67 +57,81 @@ func callbackFacebook(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	if state != oauthstate.Value {
-		fmt.Printf("invalid oauth state, expected '%s', got '%s'\n", oauthStateFaceBook, state)
+	if state != (oauthstate.Value) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-
+	///////////////////////////////////////////////////////////
 	code := r.FormValue("code")
-
 	token, err := oauthFacebook.Exchange(context.Background(), code)
 	if err != nil {
 		fmt.Printf("oauthConf.Exchange() failed with '%s'\n", err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-
-	resp, err := http.Get("https://graph.facebook.com/me?access_token=" +
-		url.QueryEscape(token.AccessToken))
+	vals := url.Values{}
+	vals.Add("fields", "id,name,email")
+	vals.Add("access_token", url.QueryEscape(token.AccessToken))
+	resp, err := http.Get(fmt.Sprintf("https://graph.facebook.com/%s/me?%s", facebookAPIVersion, vals.Encode()))
 	if err != nil {
 		fmt.Printf("Get: %s\n", err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 	defer resp.Body.Close()
-
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("ReadAll: %s\n", err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	/*
-					Hello, I'm protected
-				{
-					"name":"\u0420\u043e\u043c\u0430\u043d \u0413\u0440\u0438\u0448\u0438\u043d",
-					"id":"114187967424535"
-				}
-				{
-		   "error": {
-		      "message": "The access token could not be decrypted",
-		      "type": "OAuthException",
-		      "code": 190,
-		      "fbtrace_id": "AN1DggkkPDTYaISxwWzqkiR"
-		   }
-		}
-	*/
-
-	//	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-	// w.Write([]byte("Hello, I'm protected\n"))
-	// w.Write([]byte(string(response)))
-	//write cookies
-	var responseMap map[string]interface{} = make(map[string]interface{})
-	err = json.Unmarshal(response, &responseMap)
+	//decode answer JSON to map
+	var respMap map[string]interface{} = make(map[string]interface{})
+	err = json.Unmarshal(response, &respMap)
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	var expiration = time.Now().Add(30 * 24 * time.Hour)
-	cookieProvider := http.Cookie{Name: "provider", Value: "facebook", Expires: expiration, Path: "/"}
-	cookieToken := http.Cookie{Name: "TASID", Value: token.AccessToken, Expires: expiration, Path: "/"}
-	//cookieUID := http.Cookie{Name: "SAUID", Value: responseMap["id"].(string), Expires: expiration, Path: "/"}
-	http.SetCookie(w, &cookieProvider)
-	http.SetCookie(w, &cookieToken)
-	//http.SetCookie(w, &cookieUID)
+	//check request error
+	if _, ok := respMap["error"]; ok {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	//generate new accessToken for user
+	accessToken := generateAccessToken()
+	hashAccToken := calculateSignature(accessToken, "provider")
+	//check user registration
+	var u user
+	result := u.getUser(a.db, map[string]interface{}{
+		"login":    respMap["id"],
+		"provider": "facebook",
+	})
+	//if user not found, register new user
+	if result.Error != nil || result.RowsAffected == 0 {
+		u = user{
+			Login:       respMap["id"].(string),
+			Provider:    "facebook",
+			Name:        respMap["name"].(string),
+			AccessToken: hashAccToken,
+		}
+		result = u.createUser(a.db)
+	} else {
+		u.AccessToken = hashAccToken
+		u.updateAccessToken(a.db)
+	}
+	//write cookies
+	if result.Error == nil {
+		var expiration = time.Now().Add(30 * 24 * time.Hour)
+		cookieUID := http.Cookie{Name: "UAAT", Value: accessToken, Expires: expiration, Path: "/"}
+		http.SetCookie(w, &cookieUID)
+	}
+	redirectCookie, err := r.Cookie("redirect")
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+	} else {
+		redirURL := redirectCookie.Value
+		redirectCookie.MaxAge = -1
+		http.SetCookie(w, redirectCookie)
+		http.Redirect(w, r, redirURL, http.StatusTemporaryRedirect)
+	}
 }

@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -27,23 +25,17 @@ var (
 	oauthStateGoogle = ""
 )
 
-func generateStateOauthCookie(w http.ResponseWriter) string {
-	var expiration = time.Now().Add(24 * time.Hour)
-	b := make([]byte, 16)
-	rand.Read(b)
-	state := base64.URLEncoding.EncodeToString(b)
-	cookie := http.Cookie{Name: "oauthstate", Value: state, Expires: expiration}
-	http.SetCookie(w, &cookie)
-	return state
-}
-
 func authGoogle(w http.ResponseWriter, r *http.Request) {
 	URL, err := url.Parse(oauthGoogle.Endpoint.AuthURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	oauthStateGoogle = generateStateOauthCookie(w)
+	//create stateToken for CSFR protect
+	oauthStateGoogle = generateOauthStateProvider()
+	cookie := http.Cookie{Name: "oauthstate", Value: oauthStateGoogle, Expires: time.Now().Add(5 * time.Minute)}
+	http.SetCookie(w, &cookie)
+	/////////////////////////////////////////////////////////////////////
 	parameters := url.Values{}
 	parameters.Add("client_id", oauthGoogle.ClientID)
 	parameters.Add("scope", strings.Join(oauthGoogle.Scopes, " "))
@@ -52,16 +44,23 @@ func authGoogle(w http.ResponseWriter, r *http.Request) {
 	parameters.Add("state", oauthStateGoogle)
 	URL.RawQuery = parameters.Encode()
 	url := URL.String()
+	//redirect to provider Authentification
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
 func callbackGoogle(w http.ResponseWriter, r *http.Request) {
 	state := r.FormValue("state")
-	oauthstate, _ := r.Cookie("oauthstate")
-	if state != oauthstate.Value {
+	oauthstate, err := r.Cookie("oauthstate")
+	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
+	//verify stateTokens
+	if state != (oauthstate.Value) {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	//exchange code to provider Access&Refresh tokens
 	code := r.FormValue("code")
 	if code == "" {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
@@ -71,53 +70,65 @@ func callbackGoogle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	//get userinfo on provider resource
 	resp, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + url.QueryEscape(token.AccessToken))
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 	defer resp.Body.Close()
-
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	// w.Write([]byte("Hello, I'm protected\n"))
-	// w.Write([]byte(string(response)))
-	/*
-					Hello, I'm protected
-				{
-				  "id": "111918739891765423859",
-				  "email": "romgrishin@gmail.com",
-				  "verified_email": true,
-				  "name": "Roman Grishin",
-				  "given_name": "Roman",
-				  "family_name": "Grishin",
-				  "picture": "https://lh6.googleusercontent.com/-snn4x5qPBD8/AAAAAAAAAAI/AAAAAAAAAAA/AMZuuck2NJAT99ofWxbbVePWYIjzzQczcw/s96-c/photo.jpg",
-				  "locale": "ru"
-				}
-				{
-		  "error": {
-		    "code": 401,
-		    "message": "Request is missing required authentication credential. Expected OAuth 2 access token, login cookie or other valid authentication credential. See https://developers.google.com/identity/sign-in/web/devconsole-project.",
-		    "status": "UNAUTHENTICATED"
-			if map[error] != nil
-		}
-		}
-	*/
-	//write cookies
-	var responseMap map[string]interface{} = make(map[string]interface{})
-	err = json.Unmarshal(response, &responseMap)
+	//decode answer JSON to map
+	var respMap map[string]interface{} = make(map[string]interface{})
+	err = json.Unmarshal(response, &respMap)
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	var expiration = time.Now().Add(30 * 24 * time.Hour)
-	cookieProvider := http.Cookie{Name: "provider", Value: "google", Expires: expiration, Path: "/"}
-	cookieToken := http.Cookie{Name: "TASID", Value: token.AccessToken, Expires: expiration, Path: "/"}
-	//cookieUID := http.Cookie{Name: "SAUID", Value: responseMap["id"].(string), Expires: expiration, Path: "/"}
-	http.SetCookie(w, &cookieProvider)
-	http.SetCookie(w, &cookieToken)
-	//http.SetCookie(w, &cookieUID)
+	//check request error
+	if _, ok := respMap["error"]; ok {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	//generate new accessToken for user
+	accessToken := generateAccessToken()
+	hashAccToken := calculateSignature(accessToken, "provider")
+	//check user registration
+	var u user
+	result := u.getUser(a.db, map[string]interface{}{
+		"login":    respMap["id"],
+		"provider": "google",
+	})
+	//if user not found, register new user
+	if result.Error != nil || result.RowsAffected == 0 {
+		u = user{
+			Login:       respMap["id"].(string),
+			Provider:    "google",
+			Name:        respMap["name"].(string),
+			AccessToken: hashAccToken,
+		}
+		result = u.createUser(a.db)
+	} else {
+		u.AccessToken = hashAccToken
+		u.updateAccessToken(a.db)
+	}
+	//write cookies
+	if result.Error == nil {
+		var expiration = time.Now().Add(30 * 24 * time.Hour)
+		cookieUID := http.Cookie{Name: "UAAT", Value: accessToken, Expires: expiration, Path: "/"}
+		http.SetCookie(w, &cookieUID)
+	}
+	redirectCookie, err := r.Cookie("redirect")
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+	} else {
+		redirURL := redirectCookie.Value
+		redirectCookie.MaxAge = -1
+		http.SetCookie(w, redirectCookie)
+		http.Redirect(w, r, redirURL, http.StatusTemporaryRedirect)
+	}
 }

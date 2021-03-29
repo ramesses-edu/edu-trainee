@@ -4,73 +4,33 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-type App struct {
-	db *gorm.DB
-}
-
-func (a *App) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
-	gormDialector := mysql.New(mysql.Config{
-		DSN: fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userDB, passDB, hostDB, portDB, nameDB),
-	})
-	var err error
-	a.db, err = gorm.Open(gormDialector, &gorm.Config{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	//////////////////////////////////////////////////////////////
-	if !a.db.Migrator().HasTable(&comment{}) {
-		a.db.Migrator().CreateTable(&comment{})
-	}
-	if !a.db.Migrator().HasTable(&post{}) {
-		a.db.Migrator().CreateTable(&post{})
-		a.db.Migrator().CreateConstraint(&post{}, "Comments")
-	} else {
-		if !a.db.Migrator().HasConstraint(&post{}, "Comments") {
-			a.db.Migrator().CreateConstraint(&post{}, "Comments")
-		}
-	}
-	if !a.db.Migrator().HasTable(&user{}) {
-		a.db.Migrator().CreateTable(&user{})
-		a.db.Migrator().CreateConstraint(&user{}, "Posts")
-		a.db.Migrator().CreateConstraint(&user{}, "Comments")
-	} else {
-		if !a.db.Migrator().HasConstraint(&user{}, "Posts") {
-			a.db.Migrator().CreateConstraint(&user{}, "Posts")
-		}
-		if !a.db.Migrator().HasConstraint(&user{}, "Comments") {
-			a.db.Migrator().CreateConstraint(&user{}, "Comments")
-		}
-	}
-}
-
 ///////////////////////////////////////////////////////////////////////////////////
 type user struct {
-	XMLName  xml.Name  `xml:"user" json:"-" gorm:"-"`
-	ID       int       `json:"id" gorm:"column:id;primaryKey"`
-	Login    string    `json:"login" gorm:"column:login;unique"`
-	Name     string    `json:"name" gorm:"column:name"`
-	Provider string    `json:"-" xml:"-" gorm:"column:provider"`
-	Token    string    `json:"-" xml:"-" gorm:"column:token"`
-	Posts    []post    `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
-	Comments []comment `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	XMLName     xml.Name  `xml:"user" json:"-" gorm:"-"`
+	ID          int       `json:"id" xml:"id" gorm:"column:id;primaryKey"`
+	Login       string    `json:"login" xml:"login" gorm:"column:login;unique"`
+	Provider    string    `json:"-" xml:"-" gorm:"column:provider"`
+	Name        string    `json:"name" xml:"name" gorm:"column:name"`
+	AccessToken string    `json:"-" xml:"-" gorm:"column:access_token"`
+	Posts       []post    `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	Comments    []comment `xml:"-" json:"-" gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
 
-func (u *user) getUserByProviderToken(db *gorm.DB, provider, token string) *gorm.DB {
-	param := map[string]interface{}{"provider": provider, "token": token}
-	return db.Where(param).First(&u)
+func (u *user) getUser(db *gorm.DB, params map[string]interface{}) *gorm.DB {
+	return db.Where(params).First(&u)
 }
-func (u *user) getUserByLoginProvider(db *gorm.DB, provider, login string) *gorm.DB {
-	param := map[string]interface{}{"provider": provider, "login": login}
-	return db.Where(param).First(&u)
+func (u *user) createUser(db *gorm.DB) *gorm.DB {
+	return db.Select("Login", "Provider", "Name", "AccessToken").Create(&u)
+}
+func (u *user) updateAccessToken(db *gorm.DB) *gorm.DB {
+	return db.Model(&u).Updates(user{AccessToken: u.AccessToken})
 }
 
 //////////////////////////////////////////////////////////////////////////////////////

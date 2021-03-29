@@ -17,6 +17,10 @@ var reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
 // 	fileBody, _ := ioutil.ReadAll(file)
 // 	fmt.Fprintln(w, string(fileBody))
 // }
+func mainHandler() http.Handler {
+	return http.FileServer(http.Dir("./static"))
+	//переписать на http/template
+}
 
 func responseXML(r *http.Request) bool {
 	for key := range r.Form {
@@ -27,7 +31,7 @@ func responseXML(r *http.Request) bool {
 	return false
 }
 
-func postsHandler(w http.ResponseWriter, r *http.Request) {	
+func postsHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	rPath := r.URL.Path
 	rePostsComments := regexp.MustCompile(`^\/posts\/\d+\/comments(\/)??$`)
@@ -79,7 +83,7 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 //@Failure 500
 //@Failure default
 //@Router /posts/ [get]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func listPostsHTTP(w http.ResponseWriter, r *http.Request) {
 	var param map[string]interface{} = make(map[string]interface{})
 	userId := r.FormValue("userId")
@@ -114,7 +118,7 @@ func listPostsHTTP(w http.ResponseWriter, r *http.Request) {
 //@Failure 500
 //@Failure default
 //@Router /posts/{id} [get]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func getPostByIDHTTP(w http.ResponseWriter, r *http.Request) {
 	var param map[string]interface{} = make(map[string]interface{})
 	var err error
@@ -151,11 +155,9 @@ type createPostStruct struct {
 //@Failure 400
 //@Failure default
 //@Router /posts/ [POST]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func createPostHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, _ := r.Cookie("uid")
-	provider, _ := r.Cookie("provider")
-	u := getCurrentUser(a.db, uid.Value, provider.Value)
+	u := getCurrentUser(a.db, r)
 
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
@@ -190,11 +192,10 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Failure 400
 //@Failure default
 //@Router /posts/ [put]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, _ := r.Cookie("uid")
-	provider, _ := r.Cookie("provider")
-	u := getCurrentUser(a.db, uid.Value, provider.Value)
+	u := getCurrentUser(a.db, r)
+
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -224,11 +225,10 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Success 200
 //@Failure default
 //@Router /posts/{id} [delete]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, _ := r.Cookie("uid")
-	provider, _ := r.Cookie("provider")
-	u := getCurrentUser(a.db, uid.Value, provider.Value)
+	u := getCurrentUser(a.db, r)
+
 	pID, err := strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -249,7 +249,7 @@ func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/{id}/comments [get]
 //@Success 200
 //@Failure default
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func listPostCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 	var param map[string]interface{} = make(map[string]interface{})
 	var err error
@@ -312,7 +312,7 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 //@Success 200
 //@Failure default
 //@Router /comments/ [get]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func listCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 	var param map[string]interface{} = make(map[string]interface{})
 	postId := r.FormValue("postId")
@@ -344,7 +344,7 @@ func listCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 //@Success 200
 //@Failure default
 //@Router /comments/{id} [get]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func getCommentByIDHTTP(w http.ResponseWriter, r *http.Request) {
 	var param map[string]interface{} = make(map[string]interface{})
 	var err error
@@ -383,11 +383,10 @@ type createCommentStruct struct {
 //@Failure 400
 //@Failure default
 //@Router /comments/ [post]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, _ := r.Cookie("uid")
-	provider, _ := r.Cookie("provider")
-	u := getCurrentUser(a.db, uid.Value, provider.Value)
+	u := getCurrentUser(a.db, r)
+
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -421,11 +420,10 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Failure 400
 //@Failure default
 //@Router /comments/ [put]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, _ := r.Cookie("uid")
-	provider, _ := r.Cookie("provider")
-	u := getCurrentUser(a.db, uid.Value, provider.Value)
+	u := getCurrentUser(a.db, r)
+
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
@@ -455,11 +453,10 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Success 200
 //@Failure default
 //@Router /comments/{id} [delete]
-//@Security OAuth2AccessCode
+//@Security ApiKeyAuth
 func deleteCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, _ := r.Cookie("uid")
-	provider, _ := r.Cookie("provider")
-	u := getCurrentUser(a.db, uid.Value, provider.Value)
+	u := getCurrentUser(a.db, r)
+
 	cID, err := strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)

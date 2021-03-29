@@ -16,7 +16,7 @@ var (
 	hostDB string = "localhost"
 	portDB string = "3306"
 	nameDB string = "edudb"
-	a      App
+	a      Application
 )
 
 // @title Education Forum API
@@ -34,14 +34,11 @@ var (
 // @BasePath /
 // @query.collection.format multi
 
-// @securitydefinitions.oauth2.application OAuth2Application
-// @tokenUrl https://example.com/oauth/token
-
-// @securitydefinitions.oauth2.accessCode OAuth2AccessCode
-// @tokenUrl https://example.com/oauth/token
-// @authorizationurl https://example.com/oauth/authorize
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name APIKey
 func main() {
-	a = App{}
+	a = Application{}
 	a.initApp(userDB, passDB, hostDB, portDB, nameDB)
 	sql, err := a.db.DB()
 	if err != nil {
@@ -49,17 +46,20 @@ func main() {
 	}
 	defer sql.Close()
 	router := http.NewServeMux()
-	router.Handle("/", http.FileServer(http.Dir("./static")))
+	router.Handle("/", mainHandler())
 	router.Handle("/auth/", mwAuthentification())
-	//	router.Handle("/callback/", nil)
-	router.Handle("/posts/", mwAutorization(mwValidateToken(http.HandlerFunc(postsHandler))))
-	router.Handle("/comments/", mwAutorization(mwValidateToken(http.HandlerFunc(commentsHandler))))
+	router.Handle("/posts/", mwAutorization(http.HandlerFunc(postsHandler)))
+	router.Handle("/comments/", mwAutorization(http.HandlerFunc(commentsHandler)))
 
 	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"http"}
 	router.HandleFunc("/swagger/", httpSwagger.Handler(
 		httpSwagger.URL("localhost/swagger/doc.json"),
 	))
+	//////////////////////////////////////////////////////////////////
+	///////////////// Может грузить конфиг из файла?
+	// Параметры коннекта к БД, API Keys&Tokens от авториза соц сетей
+	// http/template для хтмл-шаблонов
 
 	// echo
 	ctx, cancel := context.WithCancel(context.Background())
