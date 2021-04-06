@@ -45,30 +45,29 @@ func main() {
 		log.Fatal(err)
 	}
 	defer sql.Close()
-	router := http.NewServeMux()
-	router.Handle("/", mainHandler())
-	router.Handle("/auth/", mwAuthentification())
-	router.Handle("/posts/", mwAutorization(http.HandlerFunc(postsHandler)))
-	router.Handle("/comments/", mwAutorization(http.HandlerFunc(commentsHandler)))
+	initializeRoutes(a.Router)
 
 	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"http"}
-	router.HandleFunc("/swagger/", httpSwagger.Handler(
-		httpSwagger.URL("localhost/swagger/doc.json"),
-	))
-	//////////////////////////////////////////////////////////////////
-	///////////////// Может грузить конфиг из файла?
-	// Параметры коннекта к БД, API Keys&Tokens от авториза соц сетей
-	// http/template для хтмл-шаблонов
 
 	// echo
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go echoStart(ctx, "localhost:8081")
 
-	server := http.Server{
-		Handler: router,
-		Addr:    "localhost:80",
-	}
-	server.ListenAndServe()
+	a.ListenAndServe("localhost:80")
+}
+func initializeRoutes(router *http.ServeMux) {
+	router.Handle("/", mainHandler())
+	router.Handle("/public", http.NotFoundHandler())
+	router.Handle("/public/", publicHandler())
+	router.Handle("/logout/", logoutHandler())
+	router.Handle("/auth/", mwAuthentification())
+	router.Handle("/posts", mwAutorization(http.HandlerFunc(postsHandler)))
+	router.Handle("/posts/", mwAutorization(http.HandlerFunc(postsHandler)))
+	router.Handle("/comments", mwAutorization(http.HandlerFunc(commentsHandler)))
+	router.Handle("/comments/", mwAutorization(http.HandlerFunc(commentsHandler)))
+	router.HandleFunc("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("localhost/swagger/doc.json"),
+	))
 }

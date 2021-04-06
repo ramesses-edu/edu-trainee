@@ -3,23 +3,72 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strconv"
+
+	"gorm.io/gorm"
 )
 
 var reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
 
-// func mainHandler(w http.ResponseWriter, r *http.Request) {
-// 	file, _ := os.OpenFile("./static/index.html", os.O_RDONLY, fs.ModePerm)
-// 	defer file.Close()
-// 	fileBody, _ := ioutil.ReadAll(file)
-// 	fmt.Fprintln(w, string(fileBody))
-// }
 func mainHandler() http.Handler {
-	return http.FileServer(http.Dir("./static"))
-	//переписать на http/template
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u := getCurrentUser(a.db, r)
+		t, err := template.ParseFiles("./templates/index.html")
+		if err != nil {
+			fmt.Println(err)
+		}
+		t.Execute(w, u)
+	})
+}
+
+type myFileSystem struct {
+	fs http.FileSystem
+}
+
+func (nfs myFileSystem) Open(path string) (http.File, error) {
+	f, err := nfs.fs.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	s, _ := f.Stat()
+	if s.IsDir() {
+		index := filepath.Join(path, "index.html")
+		if _, err := nfs.fs.Open(index); err != nil {
+			closeErr := f.Close()
+			if closeErr != nil {
+				return nil, closeErr
+			}
+
+			return nil, err
+		}
+	}
+
+	return f, nil
+}
+
+func publicHandler() http.Handler {
+	return http.StripPrefix("/public/", http.FileServer(myFileSystem{fs: http.Dir("./static")}))
+}
+
+func logoutHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u := getCurrentUser(a.db, r)
+		if u.ID == 0 {
+			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			return
+		}
+		u.AccessToken = calculateSignature(generateAccessToken(), "provider")
+		u.updateAccessToken(a.db)
+		cookie := http.Cookie{Name: "UAAT", Path: "/", MaxAge: -1}
+		http.SetCookie(w, &cookie)
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
 }
 
 func responseXML(r *http.Request) bool {
@@ -49,6 +98,8 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 			updatePostHTTP(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":""}`))
+			return
 		}
 	case rePostsID.Match([]byte(rPath)):
 		switch r.Method {
@@ -58,6 +109,8 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 			deletePostHTTP(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":""}`))
+			return
 		}
 	case rePostsComments.Match([]byte(rPath)):
 		switch r.Method {
@@ -65,11 +118,13 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 			listPostCommentsHTTP(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":""}`))
+			return
 		}
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "[]")
+		w.Write([]byte(`{"error":""}`))
 	}
 }
 
@@ -92,13 +147,20 @@ func listPostsHTTP(w http.ResponseWriter, r *http.Request) {
 		param["userId"], err = strconv.Atoi(r.FormValue("userId"))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":""}`))
 			return
 		}
 	}
 	var pp posts
 	result := pp.listPosts(a.db, param)
 	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"error":""}`))
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	if responseXML(r) {
@@ -125,12 +187,14 @@ func getPostByIDHTTP(w http.ResponseWriter, r *http.Request) {
 	param["id"], err = strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var p post
 	result := p.getPost(a.db, param)
 	if result.Error != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var pp posts = posts{Posts: []post{p}}
@@ -158,23 +222,31 @@ type createPostStruct struct {
 //@Security ApiKeyAuth
 func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 	u := getCurrentUser(a.db, r)
+	if u.ID == 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
+		return
+	}
 
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var p post
 	err = json.Unmarshal(reqBody, &p)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	p.UserID = u.ID
 	result := p.createPost(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -195,23 +267,31 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Security ApiKeyAuth
 func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 	u := getCurrentUser(a.db, r)
+	if u.ID == 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
+		return
+	}
 
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var p post
 	err = json.Unmarshal(reqBody, &p)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	p.UserID = u.ID
 	result := p.updatePost(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -228,18 +308,26 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Security ApiKeyAuth
 func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
 	u := getCurrentUser(a.db, r)
+	if u.ID == 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
+		return
+	}
 
 	pID, err := strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var p post = post{ID: pID, UserID: u.ID}
 	result := p.deletePost(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }
 
 //@Summary List comments of post
@@ -256,12 +344,14 @@ func listPostCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 	param["postId"], err = strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var cc comments
 	result := cc.listComments(a.db, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	if responseXML(r) {
@@ -288,6 +378,8 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 			updateCommentHTTP(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":""}`))
+			return
 		}
 	case reCommentsID.Match([]byte(rPath)):
 		switch r.Method {
@@ -297,11 +389,13 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 			deleteCommentHTTP(w, r)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"error":""}`))
+			return
 		}
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "[]")
+		w.Write([]byte(`{"error":""}`))
 	}
 }
 
@@ -321,6 +415,7 @@ func listCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 		param["postId"], err = strconv.Atoi(r.FormValue("postId"))
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":""}`))
 			return
 		}
 	}
@@ -328,6 +423,7 @@ func listCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 	result := cc.listComments(a.db, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	if responseXML(r) {
@@ -351,12 +447,14 @@ func getCommentByIDHTTP(w http.ResponseWriter, r *http.Request) {
 	param["id"], err = strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var cmnt comment
 	result := cmnt.getComment(a.db, param)
 	if result.Error != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var cc comments = comments{Comments: []comment{cmnt}}
@@ -386,23 +484,31 @@ type createCommentStruct struct {
 //@Security ApiKeyAuth
 func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 	u := getCurrentUser(a.db, r)
+	if u.ID == 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
+		return
+	}
 
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var c comment
 	err = json.Unmarshal(reqBody, &c)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	c.UserID = u.ID
 	result := c.createComment(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -423,23 +529,30 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Security ApiKeyAuth
 func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 	u := getCurrentUser(a.db, r)
-
+	if u.ID == 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
+		return
+	}
 	reqBody, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var c comment
 	err = json.Unmarshal(reqBody, &c)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	c.UserID = u.ID
 	result := c.updateComment(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -456,16 +569,24 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Security ApiKeyAuth
 func deleteCommentHTTP(w http.ResponseWriter, r *http.Request) {
 	u := getCurrentUser(a.db, r)
+	if u.ID == 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
+		return
+	}
 
 	cID, err := strconv.Atoi(reNum.FindString(r.URL.Path))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	var c comment = comment{ID: cID, UserID: u.ID}
 	result := c.deleteComment(a.db)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":""}`))
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }

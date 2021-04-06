@@ -196,13 +196,5 @@ func callbackTwitter(w http.ResponseWriter, r *http.Request) {
 		cookieUID := http.Cookie{Name: "UAAT", Value: accessToken, Expires: expiration, Path: "/"}
 		http.SetCookie(w, &cookieUID)
 	}
-	redirectCookie, err := r.Cookie("redirect")
-	if err != nil {
-		http.Redirect(w, r, "/", http.StatusFound)
-	} else {
-		redirURL := redirectCookie.Value
-		redirectCookie.MaxAge = -1
-		http.SetCookie(w, redirectCookie)
-		http.Redirect(w, r, redirURL, http.StatusTemporaryRedirect)
-	}
+	http.Redirect(w, r, "/", http.StatusFound)
 }

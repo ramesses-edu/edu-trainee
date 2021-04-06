@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strconv"
 
 	"gorm.io/gorm"
 )
@@ -36,7 +35,7 @@ func (u *user) updateAccessToken(db *gorm.DB) *gorm.DB {
 //////////////////////////////////////////////////////////////////////////////////////
 type posts struct {
 	XMLName xml.Name `xml:"posts" json:"-" gorm:"-"`
-	Posts   []post
+	Posts   []post   `xml:"post"`
 }
 
 func (pp *posts) listPosts(db *gorm.DB, param map[string]interface{}) *gorm.DB {
@@ -66,7 +65,6 @@ func (pp *posts) responseXML(w http.ResponseWriter, r *http.Request) {
 
 /////////////////////////////////////////////////////////////////////////////////////////
 type post struct {
-	XMLName  xml.Name  `xml:"post" json:"-" gorm:"-"`
 	UserID   int       `json:"userId" gorm:"column:userId"`
 	ID       int       `json:"id" gorm:"column:id;primaryKey"`
 	Title    string    `json:"title" gorm:"column:title;type:VARCHAR(256)"`
@@ -79,22 +77,19 @@ func (p *post) getPost(db *gorm.DB, param map[string]interface{}) *gorm.DB {
 }
 
 func (p *post) createPost(db *gorm.DB) *gorm.DB {
-	if p.UserID == 0 {
-		return db.Select("Title", "Body").Create(&p)
-	}
 	return db.Select("UserID", "Title", "Body").Create(&p)
 }
 func (p *post) updatePost(db *gorm.DB) *gorm.DB {
 	return db.Model(&p).Updates(post{UserID: p.UserID, Title: p.Title, Body: p.Body})
 }
 func (p *post) deletePost(db *gorm.DB) *gorm.DB {
-	return db.Where("userId = ?", strconv.Itoa(p.UserID)).Delete(&p)
+	return db.Where("userId = ?", p.UserID).Delete(&p)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 type comments struct {
-	XMLName  xml.Name `xml:"comments" json:"-" gorm:"-"`
-	Comments []comment
+	XMLName  xml.Name  `xml:"comments" json:"-" gorm:"-"`
+	Comments []comment `xml:"comment"`
 }
 
 func (cc *comments) listComments(db *gorm.DB, param map[string]interface{}) *gorm.DB {
@@ -124,13 +119,12 @@ func (cc *comments) responseXML(w http.ResponseWriter, r *http.Request) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 type comment struct {
-	XMLName xml.Name `xml:"comment" json:"-" gorm:"-"`
-	PostID  int      `json:"postId" gorm:"column:postId"`
-	UserID  int      `json:"userId" gorm:"column:userId"`
-	ID      int      `json:"id" gorm:"column:id;primaryKey"`
-	Name    string   `json:"name" gorm:"column:name;type:VARCHAR(256)"`
-	Email   string   `json:"email" gorm:"column:email;type:VARCHAR(256)"`
-	Body    string   `json:"body" gorm:"column:body;type:VARCHAR(256)"`
+	PostID int    `json:"postId" gorm:"column:postId"`
+	UserID int    `json:"userId" gorm:"column:userId"`
+	ID     int    `json:"id" gorm:"column:id;primaryKey"`
+	Name   string `json:"name" gorm:"column:name;type:VARCHAR(256)"`
+	Email  string `json:"email" gorm:"column:email;type:VARCHAR(256)"`
+	Body   string `json:"body" gorm:"column:body;type:VARCHAR(256)"`
 }
 
 func (c *comment) getComment(db *gorm.DB, param map[string]interface{}) *gorm.DB {
@@ -142,14 +136,8 @@ func (c *comment) createComment(db *gorm.DB) *gorm.DB {
 	if c.Email != "" && !reEmail.Match([]byte(c.Email)) {
 		return &gorm.DB{Error: gorm.ErrInvalidValue}
 	}
-	if c.PostID == 0 && c.UserID == 0 {
-		return db.Select("Name", "Email", "Body").Create(&c)
-	}
 	if c.PostID == 0 {
-		db.Select("UserID", "Name", "Email", "Body").Create(&c)
-	}
-	if c.UserID == 0 {
-		db.Select("PostID", "Name", "Email", "Body").Create(&c)
+		return db.Select("UserID", "Name", "Email", "Body").Create(&c)
 	}
 	return db.Select("PostID", "UserID", "Name", "Email", "Body").Create(&c)
 }
@@ -161,5 +149,5 @@ func (c *comment) updateComment(db *gorm.DB) *gorm.DB {
 	return db.Model(&c).Updates(comment{PostID: c.PostID, UserID: c.UserID, Name: c.Name, Email: c.Email, Body: c.Body})
 }
 func (c *comment) deleteComment(db *gorm.DB) *gorm.DB {
-	return db.Where("userId = ?", strconv.Itoa(c.UserID)).Delete(&c)
+	return db.Where("userId = ?", c.UserID).Delete(&c)
 }

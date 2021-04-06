@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"net/http"
 	"regexp"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -31,14 +30,21 @@ func calculateSignature(base, key string) string {
 	return base64.StdEncoding.EncodeToString(signature)
 }
 func getCurrentUser(db *gorm.DB, r *http.Request) user {
-	accTokenC, err := r.Cookie("UAAT")
-	if err != nil {
+	accessToken := ""
+	accessTokenCookie, err := r.Cookie("UAAT")
+	if err == nil {
+		accessToken = accessTokenCookie.Value
+	}
+	if accessToken == "" {
+		accessToken = r.Header.Get("APIKey")
+	}
+	if accessToken == "" {
 		return user{}
 	}
-	accToken := calculateSignature(accTokenC.Value, "provider")
+	hashAccTok := calculateSignature(accessToken, "provider")
 	var u user
-	result := u.getUser(db, map[string]interface{}{
-		"access_token": accToken,
+	result := u.getUser(a.db, map[string]interface{}{
+		"access_token": hashAccTok,
 	})
 	if result.Error != nil || result.RowsAffected == 0 {
 		return user{}
@@ -57,9 +63,8 @@ func mwAutorization(next http.Handler) http.Handler {
 			accessToken = r.Header.Get("APIKey")
 		}
 		if accessToken == "" {
-			cookieRedirect := http.Cookie{Name: "redirect", Value: r.URL.Path, Path: "/", Expires: time.Now().Add(5 * time.Minute)}
-			http.SetCookie(w, &cookieRedirect)
-			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			w.WriteHeader(http.StatusNetworkAuthenticationRequired)
+			w.Write([]byte(`{"error":""}`))
 			return
 		}
 		hashAccTok := calculateSignature(accessToken, "provider")
@@ -68,9 +73,8 @@ func mwAutorization(next http.Handler) http.Handler {
 			"access_token": hashAccTok,
 		})
 		if result.Error != nil || result.RowsAffected == 0 {
-			cookieRedirect := http.Cookie{Name: "redirect", Value: r.URL.Path, Path: "/", Expires: time.Now().Add(5 * time.Minute)}
-			http.SetCookie(w, &cookieRedirect)
-			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+			w.WriteHeader(http.StatusNetworkAuthenticationRequired)
+			w.Write([]byte(`{"error":""}`))
 			return
 		}
 		next.ServeHTTP(w, r)

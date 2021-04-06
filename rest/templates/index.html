@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="/public/bootstrap/bootstrap-5.0.0-beta3/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">        
+        <title>Index</title>
+    </head>
+    <body>        
+        <div class="container-lg">                    
+            {{if eq .ID 0 }}
+            <div class="row justify-content-center">
+              <h2 style="text-align:center">Login with Social Media</h2>
+              <div class="col-lg-4 gy-1">
+                  <a href="/auth/twitter" class="btn btn-outline-dark" role="button" style="width: 100%">
+                    <img width="20px" style="margin-bottom:3px; margin-right:5px" alt="Twitter sign-in" src="/public/image/twitter_logo.png" />
+                    Login with Twitter
+                  </a>
+              </div>
+             </div>                          
+             <div class="row justify-content-center">
+              <div class="col-lg-4 gy-1">
+                  <a href="/auth/google" class="btn btn-outline-dark" role="button" style="width: 100%">
+                    <img width="20px" style="margin-bottom:3px; margin-right:5px" alt="Google sign-in" src="/public/image/g_logo.png" />
+                    Login with Google+
+                  </a>
+              </div>
+             </div>
+             <div class="row justify-content-center">                                        
+              <div class="col-lg-4 gy-1">
+                <a href="/auth/facebook" class="btn btn-outline-dark" role="button" style="width: 100%">
+                  <img width="20px" style="margin-bottom:3px; margin-right:5px" alt="Facebook sign-in" src="/public/image/fb_logo.png" />
+                  Login with Facebook
+                </a>
+              </div>
+           </div>                
+            </div>    
+            {{else}}
+            <div class="row justify-content-center">
+              <h4 style="text-align: center">Hello, {{.Name}}  <a href="/logout" style="font-size: 14px">Logout</a></h4>
+            </div>
+            {{end}}          
+        </div>                   
+        <script src="/public/bootstrap/bootstrap-5.0.0-beta3/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
+    </body>
+</html>

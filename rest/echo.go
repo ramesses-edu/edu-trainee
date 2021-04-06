@@ -23,6 +23,7 @@ func initRoutes(e *echo.Echo) {
 		return c.String(http.StatusBadRequest, "")
 	})
 	gPosts := e.Group("/posts")
+	gPosts.Use(emwAutorization)
 	gPosts.GET("", listPosts)
 	gPosts.GET("/:id", getPostById)
 	gPosts.GET("/:id/comments", listPostComments)
@@ -31,11 +32,38 @@ func initRoutes(e *echo.Echo) {
 	gPosts.DELETE("/:id", deletePost)
 
 	gComments := e.Group("/comments")
+	gComments.Use(emwAutorization)
 	gComments.GET("", listComments)
 	gComments.GET("/:id", getCommentByID)
 	gComments.POST("", createComment)
 	gComments.PUT("", updateComment)
 	gComments.DELETE("/:id", deleteComment)
+}
+func emwAutorization(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		accessToken := ""
+		accessTokenCookie, err := c.Cookie("UAAT")
+		if err == nil {
+			accessToken = accessTokenCookie.Value
+		}
+		if accessToken == "" {
+			accessToken = c.Request().Header.Get("APIKey")
+		}
+		if accessToken == "" {
+			c.String(http.StatusNetworkAuthenticationRequired, `{"error":""}`)
+			return nil
+		}
+		hashAccTok := calculateSignature(accessToken, "provider")
+		var u user
+		result := u.getUser(a.db, map[string]interface{}{
+			"access_token": hashAccTok,
+		})
+		if result.Error != nil || result.RowsAffected == 0 {
+			c.String(http.StatusNetworkAuthenticationRequired, `{"error":""}`)
+			return nil
+		}
+		return next(c)
+	}
 }
 
 func listPosts(c echo.Context) error {

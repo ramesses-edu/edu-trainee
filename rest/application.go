@@ -3,17 +3,20 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type Application struct {
-	db *gorm.DB
+	db     *gorm.DB
+	Router *http.ServeMux
+	Server *http.Server
 }
 
 func (a *Application) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
+	//init DB connection
 	gormDialector := mysql.New(mysql.Config{
 		DSN: fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userDB, passDB, hostDB, portDB, nameDB),
 	})
@@ -22,7 +25,7 @@ func (a *Application) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//////////////////////////////////////////////////////////////
+	//init DB tables
 	if !a.db.Migrator().HasTable(&comment{}) {
 		a.db.Migrator().CreateTable(&comment{})
 	}
@@ -34,12 +37,11 @@ func (a *Application) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
 			a.db.Migrator().CreateConstraint(&post{}, "Comments")
 		}
 	}
-	var u user = user{Login: "test", Name: "test", Provider: "test", AccessToken: calculateSignature("test", "provider")}
+
 	if !a.db.Migrator().HasTable(&user{}) {
 		a.db.Migrator().CreateTable(&user{})
 		a.db.Migrator().CreateConstraint(&user{}, "Posts")
 		a.db.Migrator().CreateConstraint(&user{}, "Comments")
-		//a.db.Create(&u)
 	} else {
 		if !a.db.Migrator().HasConstraint(&user{}, "Posts") {
 			a.db.Migrator().CreateConstraint(&user{}, "Posts")
@@ -48,5 +50,13 @@ func (a *Application) initApp(userDB, passDB, hostDB, portDB, nameDB string) {
 			a.db.Migrator().CreateConstraint(&user{}, "Comments")
 		}
 	}
-	a.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&u)
+	// init Router
+	a.Router = http.NewServeMux()
+}
+func (a *Application) ListenAndServe(addr string) {
+	a.Server = &http.Server{
+		Handler: a.Router,
+		Addr:    addr,
+	}
+	a.Server.ListenAndServe()
 }
