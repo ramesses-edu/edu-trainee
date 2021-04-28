@@ -2,6 +2,7 @@ package application
 
 import (
 	"edu-trainee/rest/config"
+	"edu-trainee/rest/models"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,33 +29,9 @@ func (a *Application) InitApplication() {
 	a.DB, err = gorm.Open(gormDialector, &gorm.Config{})
 	if err != nil {
 		log.Fatal(err)
-	}	
+	}
 	//init DB tables
-	// if !a.db.Migrator().HasTable(&comment{}) {
-	// 	a.db.Migrator().CreateTable(&comment{})
-	// }
-	// if !a.db.Migrator().HasTable(&post{}) {
-	// 	a.db.Migrator().CreateTable(&post{})
-	// 	a.db.Migrator().CreateConstraint(&post{}, "Comments")
-	// } else {
-	// 	if !a.db.Migrator().HasConstraint(&post{}, "Comments") {
-	// 		a.db.Migrator().CreateConstraint(&post{}, "Comments")
-	// 	}
-	// }
-
-	// if !a.db.Migrator().HasTable(&user{}) {
-	// 	a.db.Migrator().CreateTable(&user{})
-	// 	a.db.Migrator().CreateConstraint(&user{}, "Posts")
-	// 	a.db.Migrator().CreateConstraint(&user{}, "Comments")
-	// } else {
-	// 	if !a.db.Migrator().HasConstraint(&user{}, "Posts") {
-	// 		a.db.Migrator().CreateConstraint(&user{}, "Posts")
-	// 	}
-	// 	if !a.db.Migrator().HasConstraint(&user{}, "Comments") {
-	// 		a.db.Migrator().CreateConstraint(&user{}, "Comments")
-	// 	}
-	// }
-
+	initDBTables(a.DB)
 	//init Router
 	a.Router = http.NewServeMux()
 }
@@ -65,4 +42,31 @@ func (a *Application) ListenAndServe() {
 		Addr:    a.Config.HostAddr,
 	}
 	a.Server.ListenAndServe()
+}
+
+func initDBTables(db *gorm.DB) {
+	if !db.Migrator().HasTable(&models.Comment{}) {
+		db.Migrator().CreateTable(&models.Comment{})
+	}
+	if !db.Migrator().HasTable(&models.Post{}) {
+		db.Migrator().CreateTable(&models.Post{})
+		db.Migrator().CreateConstraint(&models.Post{}, "Comments")
+	} else {
+		if !db.Migrator().HasConstraint(&models.Post{}, "Comments") {
+			db.Migrator().CreateConstraint(&models.Post{}, "Comments")
+		}
+	}
+
+	if !db.Migrator().HasTable(&models.User{}) {
+		db.Migrator().CreateTable(&models.User{})
+		db.Migrator().CreateConstraint(&models.User{}, "Posts")
+		db.Migrator().CreateConstraint(&models.User{}, "Comments")
+	} else {
+		if !db.Migrator().HasConstraint(&models.User{}, "Posts") {
+			db.Migrator().CreateConstraint(&models.User{}, "Posts")
+		}
+		if !db.Migrator().HasConstraint(&models.User{}, "Comments") {
+			db.Migrator().CreateConstraint(&models.User{}, "Comments")
+		}
+	}
 }
