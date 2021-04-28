@@ -14,7 +14,6 @@ import (
 
 var (
 	oauthGoogle      *oauth2.Config
-	googleEndpoint   oauth2.Endpoint
 	oauthStateGoogle = ""
 )
 

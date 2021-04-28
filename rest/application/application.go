@@ -28,8 +28,7 @@ func (a *Application) InitApplication() {
 	a.DB, err = gorm.Open(gormDialector, &gorm.Config{})
 	if err != nil {
 		log.Fatal(err)
-	}
-	//init DB tables
+	}	
 	//init DB tables
 	// if !a.db.Migrator().HasTable(&comment{}) {
 	// 	a.db.Migrator().CreateTable(&comment{})

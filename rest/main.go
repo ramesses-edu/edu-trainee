@@ -46,27 +46,25 @@ func main() {
 
 	a = application.Application{}
 	a.InitApplication()
-	googleEndpoint = oauth2.Endpoint{
-		AuthURL:  a.Config.Google.AuthURL,
-		TokenURL: a.Config.Google.TokenURL,
-	}
-	facebookEndpoint = oauth2.Endpoint{
-		AuthURL:  a.Config.Facebook.AuthURL,
-		TokenURL: a.Config.Facebook.TokenURL,
-	}
-	oauthGoogle  = &oauth2.Config{
+	oauthGoogle = &oauth2.Config{
 		ClientID:     a.Config.Google.ClientID,
 		ClientSecret: a.Config.Google.ClientSecret,
 		RedirectURL:  a.Config.Google.RedirectURL,
 		Scopes:       a.Config.Google.Scopes,
-		Endpoint:     googleEndpoint,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  a.Config.Google.AuthURL,
+			TokenURL: a.Config.Google.TokenURL,
+		},
 	}
-	oauthFacebook  = &oauth2.Config{
+	oauthFacebook = &oauth2.Config{
 		ClientID:     a.Config.Facebook.ClientID,
 		ClientSecret: a.Config.Facebook.ClientSecret,
 		RedirectURL:  a.Config.Facebook.RedirectURL,
 		Scopes:       a.Config.Facebook.Scopes,
-		Endpoint:     facebookEndpoint,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  a.Config.Facebook.AuthURL,
+			TokenURL: a.Config.Facebook.TokenURL,
+		},
 	}
 	sql, err := a.DB.DB()
 	if err != nil {

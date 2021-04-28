@@ -15,7 +15,6 @@ import (
 
 var (
 	oauthFacebook      *oauth2.Config
-	facebookEndpoint   oauth2.Endpoint
 	oauthStateFaceBook = ""
 )
 
