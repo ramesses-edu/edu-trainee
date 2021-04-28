@@ -14,17 +14,8 @@ import (
 )
 
 var (
-	oauthFacebook *oauth2.Config = &oauth2.Config{
-		ClientID:     a.Config.Facebook.ClientID,
-		ClientSecret: a.Config.Facebook.ClientSecret,
-		RedirectURL:  a.Config.Facebook.RedirectURL,
-		Scopes:       a.Config.Facebook.Scopes,
-		Endpoint:     facebookEndpoint,
-	}
-	facebookEndpoint oauth2.Endpoint = oauth2.Endpoint{
-		AuthURL:  a.Config.Facebook.AuthURL,
-		TokenURL: a.Config.Facebook.TokenURL,
-	}
+	oauthFacebook      *oauth2.Config
+	facebookEndpoint   oauth2.Endpoint
 	oauthStateFaceBook = ""
 )
 

@@ -13,17 +13,8 @@ import (
 )
 
 var (
-	oauthGoogle *oauth2.Config = &oauth2.Config{
-		ClientID:     a.Config.Google.ClientID,
-		ClientSecret: a.Config.Google.ClientSecret,
-		RedirectURL:  a.Config.Google.RedirectURL,
-		Scopes:       a.Config.Google.Scopes,
-		Endpoint:     googleEndpoint,
-	}
-	googleEndpoint oauth2.Endpoint = oauth2.Endpoint{
-		AuthURL:  a.Config.Google.AuthURL,
-		TokenURL: a.Config.Google.TokenURL,
-	}
+	oauthGoogle      *oauth2.Config
+	googleEndpoint   oauth2.Endpoint
 	oauthStateGoogle = ""
 )
 
