@@ -15,17 +15,16 @@ import (
 
 var (
 	oauthFacebook *oauth2.Config = &oauth2.Config{
-		ClientID:     "346852496742371",
-		ClientSecret: "aa8338431fe3a7cfa79d9abce2812b95",
-		RedirectURL:  "http://localhost:80/auth/callback/facebook",
-		Scopes:       []string{"public_profile", "email"},
+		ClientID:     a.Config.Facebook.ClientID,
+		ClientSecret: a.Config.Facebook.ClientSecret,
+		RedirectURL:  a.Config.Facebook.RedirectURL,
+		Scopes:       a.Config.Facebook.Scopes,
 		Endpoint:     facebookEndpoint,
 	}
 	facebookEndpoint oauth2.Endpoint = oauth2.Endpoint{
-		AuthURL:  fmt.Sprintf("https://www.facebook.com/%s/dialog/oauth", facebookAPIVersion),
-		TokenURL: fmt.Sprintf("https://graph.facebook.com/%s/oauth/access_token", facebookAPIVersion),
+		AuthURL:  a.Config.Facebook.AuthURL,
+		TokenURL: a.Config.Facebook.TokenURL,
 	}
-	facebookAPIVersion = "v10.0"
 	oauthStateFaceBook = ""
 )
 
@@ -72,7 +71,7 @@ func callbackFacebook(w http.ResponseWriter, r *http.Request) {
 	vals := url.Values{}
 	vals.Add("fields", "id,name,email")
 	vals.Add("access_token", url.QueryEscape(token.AccessToken))
-	resp, err := http.Get(fmt.Sprintf("https://graph.facebook.com/%s/me?%s", facebookAPIVersion, vals.Encode()))
+	resp, err := http.Get(fmt.Sprintf("https://graph.facebook.com/%s/me?%s", a.Config.Facebook.APIVersion, vals.Encode()))
 	if err != nil {
 		fmt.Printf("Get: %s\n", err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)

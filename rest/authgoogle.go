@@ -10,17 +10,19 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 var (
 	oauthGoogle *oauth2.Config = &oauth2.Config{
-		ClientID:     "89020002530-f3kmq3qc5me63q58giisrr3lsjguhbre.apps.googleusercontent.com",
-		ClientSecret: "kI0AfuN6k2d_AzMZySHmoaXS",
-		RedirectURL:  "http://localhost/auth/callback/google",
-		Scopes: []string{"https://www.googleapis.com/auth/userinfo.email",
-			"https://www.googleapis.com/auth/userinfo.profile", "openid"},
-		Endpoint: google.Endpoint,
+		ClientID:     a.Config.Google.ClientID,
+		ClientSecret: a.Config.Google.ClientSecret,
+		RedirectURL:  a.Config.Google.RedirectURL,
+		Scopes:       a.Config.Google.Scopes,
+		Endpoint:     googleEndpoint,
+	}
+	googleEndpoint oauth2.Endpoint = oauth2.Endpoint{
+		AuthURL:  a.Config.Google.AuthURL,
+		TokenURL: a.Config.Google.TokenURL,
 	}
 	oauthStateGoogle = ""
 )

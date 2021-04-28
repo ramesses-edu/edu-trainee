@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 
 	"edu-trainee/rest/application"
 	"edu-trainee/rest/docs"
@@ -16,8 +17,9 @@ var a application.Application
 
 func init() {
 	// loads values from .env into the system
-	if err := godotenv.Load("config"); err != nil {
+	if err := godotenv.Load("./config.env"); err != nil {
 		log.Print("No .env file found")
+		os.Exit(1)
 	}
 }
 
@@ -40,6 +42,7 @@ func init() {
 // @in header
 // @name APIKey
 func main() {
+
 	a = application.Application{}
 	a.InitApplication()
 	sql, err := a.DB.DB()
@@ -52,13 +55,14 @@ func main() {
 	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"http"}
 
-	// echo
+	//echo
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go echoStart(ctx, "localhost:8081")
 
 	a.ListenAndServe()
 }
+
 func initializeRoutes(router *http.ServeMux) {
 	router.Handle("/", mainHandler())
 	router.Handle("/public", http.NotFoundHandler())

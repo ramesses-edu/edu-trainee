@@ -13,27 +13,20 @@ import (
 	"time"
 )
 
-const (
-	twitterAPIKey      = "TmSwp1vBJfQeXWoAt5G6SqWmy"
-	twitterAPISecret   = "0ORlrpHLPCFQCY3QPSa9ZMtW5p9OBscKpF36idOL2itJxvVaOd"
-	twitterTokenKey    = "1374820281542438923-6KfgTG8HnLORpaHNwH9EGravoK4t4U"
-	twitterTokenSecret = "nQN44yJd9nSvs5elZc578dpaZ0hZwrTgexsUg3SSZ1VNl"
-)
-
 func buildAuthHeader(method, path string, params map[string]string) string {
 	vals := url.Values{}
-	vals.Add("oauth_consumer_key", twitterAPIKey)
+	vals.Add("oauth_consumer_key", a.Config.Twitter.TwitterAPIKey)
 	vals.Add("oauth_nonce", generateNonce())
 	vals.Add("oauth_signature_method", "HMAC-SHA1")
 	vals.Add("oauth_timestamp", strconv.Itoa(int(time.Now().Unix())))
-	vals.Add("oauth_token", twitterTokenKey)
+	vals.Add("oauth_token", a.Config.Twitter.TwitterTokenKey)
 	vals.Add("oauth_version", "1.0")
 	for k, v := range params {
 		vals.Set(k, v)
 	}
 	parameterString := strings.Replace(vals.Encode(), "+", "%20", -1)
 	signatureBase := strings.ToUpper(method) + "&" + url.QueryEscape(path) + "&" + url.QueryEscape(parameterString)
-	signingKey := url.QueryEscape(twitterAPISecret) + "&" + url.QueryEscape(twitterTokenSecret)
+	signingKey := url.QueryEscape(a.Config.Twitter.TwitterAPISecret) + "&" + url.QueryEscape(a.Config.Twitter.TwitterTokenSecret)
 	signature := calculateSignature(signatureBase, signingKey)
 	vals.Add("oauth_signature", signature)
 	returnString := "OAuth"
@@ -52,13 +45,13 @@ func generateNonce() string {
 	return string(b)
 }
 func authTwitter(w http.ResponseWriter, r *http.Request) {
-	reqTokUrl := "https://api.twitter.com/oauth/request_token"
+	reqTokUrl := a.Config.Twitter.ReqTokenURL
 	request, err := http.NewRequest(http.MethodPost, reqTokUrl, nil)
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	autorize := buildAuthHeader(http.MethodPost, reqTokUrl, map[string]string{"oauth_callback": "http://localhost/auth/callback/twitter"})
+	autorize := buildAuthHeader(http.MethodPost, reqTokUrl, map[string]string{"oauth_callback": a.Config.Twitter.RedirectURL})
 	request.Header.Set("Authorization", autorize)
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -85,7 +78,7 @@ func authTwitter(w http.ResponseWriter, r *http.Request) {
 	cookie := http.Cookie{Name: "oauthstate", Value: stateToken, Expires: time.Now().Add(5 * time.Minute)}
 	http.SetCookie(w, &cookie)
 	/////////////////////////////////////////////////////////
-	urlAuthUser := "https://api.twitter.com/oauth/authenticate?oauth_token=" + stateToken
+	urlAuthUser := a.Config.Twitter.AuthURL + "=" + stateToken
 	http.Redirect(w, r, urlAuthUser, http.StatusFound)
 }
 
@@ -101,7 +94,7 @@ func callbackTwitter(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	reqTokUrl := "https://api.twitter.com/oauth/access_token"
+	reqTokUrl := a.Config.Twitter.TokenURL
 	request, err := http.NewRequest(http.MethodPost, reqTokUrl, bytes.NewBuffer([]byte(fmt.Sprintf("oauth_verifier=%s", o_verifier))))
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
