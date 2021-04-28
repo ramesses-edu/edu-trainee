@@ -16,7 +16,7 @@ var a application.Application
 
 func init() {
 	// loads values from .env into the system
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load("config"); err != nil {
 		log.Print("No .env file found")
 	}
 }
