@@ -14,4 +14,3 @@
 *.sum
 .vscode/launch.json
 rest/config/config.env
-rest/config.env
