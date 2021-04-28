@@ -99,7 +99,7 @@ func callbackGoogle(w http.ResponseWriter, r *http.Request) {
 	hashAccToken := calculateSignature(accessToken, "provider")
 	//check user registration
 	var u user
-	result := u.getUser(a.db, map[string]interface{}{
+	result := u.getUser(a.DB, map[string]interface{}{
 		"login":    respMap["id"],
 		"provider": "google",
 	})
@@ -111,10 +111,10 @@ func callbackGoogle(w http.ResponseWriter, r *http.Request) {
 			Name:        respMap["name"].(string),
 			AccessToken: hashAccToken,
 		}
-		result = u.createUser(a.db)
+		result = u.createUser(a.DB)
 	} else {
 		u.AccessToken = hashAccToken
-		u.updateAccessToken(a.db)
+		u.updateAccessToken(a.DB)
 	}
 	//write cookies
 	if result.Error == nil {

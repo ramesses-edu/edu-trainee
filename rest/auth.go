@@ -43,7 +43,7 @@ func getCurrentUser(db *gorm.DB, r *http.Request) user {
 	}
 	hashAccTok := calculateSignature(accessToken, "provider")
 	var u user
-	result := u.getUser(a.db, map[string]interface{}{
+	result := u.getUser(a.DB, map[string]interface{}{
 		"access_token": hashAccTok,
 	})
 	if result.Error != nil || result.RowsAffected == 0 {
@@ -69,7 +69,7 @@ func mwAutorization(next http.Handler) http.Handler {
 		}
 		hashAccTok := calculateSignature(accessToken, "provider")
 		var u user
-		result := u.getUser(a.db, map[string]interface{}{
+		result := u.getUser(a.DB, map[string]interface{}{
 			"access_token": hashAccTok,
 		})
 		if result.Error != nil || result.RowsAffected == 0 {

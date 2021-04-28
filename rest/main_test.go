@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"edu-trainee/rest/application"
 	"encoding/json"
 	"encoding/xml"
 	"log"
@@ -15,10 +16,10 @@ import (
 )
 
 func TestMain(t *testing.M) {
-	a = Application{}
-	a.initApp(userDB, passDB, hostDB, portDB, nameDB)
+	a = application.Application{}
+	a.InitApplication()
 	initializeRoutes(a.Router)
-	createTestUser(a.db)
+	createTestUser(a.DB)
 	code := t.Run()
 	clearTableUsers()
 	clearTablePosts()
@@ -34,19 +35,19 @@ func createTestUser(db *gorm.DB) {
 	}
 }
 func clearTableUsers() {
-	tx := a.db.Begin()
+	tx := a.DB.Begin()
 	tx.Exec("DELETE FROM users")
 	tx.Exec("ALTER TABLE users AUTO_INCREMENT = 1")
 	tx.Commit()
 }
 func clearTablePosts() {
-	tx := a.db.Begin()
+	tx := a.DB.Begin()
 	tx.Exec("DELETE FROM posts")
 	tx.Exec("ALTER TABLE posts AUTO_INCREMENT = 1")
 	tx.Commit()
 }
 func clearTableComments() {
-	tx := a.db.Begin()
+	tx := a.DB.Begin()
 	tx.Exec("DELETE FROM comments")
 	tx.Exec("ALTER TABLE comments AUTO_INCREMENT = 1")
 	tx.Commit()
@@ -124,14 +125,14 @@ func TestGetNonExistenComment(t *testing.T) {
 	}
 }
 func addPosts(count int) {
-	tx := a.db.Begin()
+	tx := a.DB.Begin()
 	for i := 0; i < count; i++ {
 		tx.Exec("INSERT INTO posts (title,body,userId) VALUES(?,?,?)", "title", "body", 1)
 	}
 	tx.Commit()
 }
 func addComments(count, postid int) {
-	tx := a.db.Begin()
+	tx := a.DB.Begin()
 	for i := 0; i < count; i++ {
 		tx.Exec("INSERT INTO comments (name,email,body,postId,userId) VALUES(?,?,?,?,?)", "name", "email", "body", postid, 1)
 	}

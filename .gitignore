@@ -13,3 +13,4 @@
 *.mod
 *.sum
 .vscode/launch.json
+rest/config/config.env

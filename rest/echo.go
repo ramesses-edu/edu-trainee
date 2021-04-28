@@ -55,7 +55,7 @@ func emwAutorization(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		hashAccTok := calculateSignature(accessToken, "provider")
 		var u user
-		result := u.getUser(a.db, map[string]interface{}{
+		result := u.getUser(a.DB, map[string]interface{}{
 			"access_token": hashAccTok,
 		})
 		if result.Error != nil || result.RowsAffected == 0 {
@@ -82,7 +82,7 @@ func listPosts(c echo.Context) error {
 		}
 	}
 	var pp posts
-	result := pp.listPosts(a.db, param)
+	result := pp.listPosts(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -105,7 +105,7 @@ func getPostById(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "")
 	}
 	var p post
-	result := p.getPost(a.db, param)
+	result := p.getPost(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -129,7 +129,7 @@ func listPostComments(c echo.Context) error {
 	}
 	param["postId"] = postId
 	var cc comments
-	result := cc.listComments(a.db, param)
+	result := cc.listComments(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -149,7 +149,7 @@ func createPost(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := p.createPost(a.db)
+	result := p.createPost(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
@@ -166,7 +166,7 @@ func updatePost(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := p.updatePost(a.db)
+	result := p.updatePost(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
@@ -178,7 +178,7 @@ func deletePost(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
 	var p post = post{ID: pID}
-	result := p.deletePost(a.db)
+	result := p.deletePost(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -200,7 +200,7 @@ func listComments(c echo.Context) error {
 		}
 	}
 	var cc comments
-	result := cc.listComments(a.db, param)
+	result := cc.listComments(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -223,7 +223,7 @@ func getCommentByID(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "")
 	}
 	var cmnt comment
-	result := cmnt.getComment(a.db, param)
+	result := cmnt.getComment(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -244,7 +244,7 @@ func createComment(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := cmt.createComment(a.db)
+	result := cmt.createComment(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
@@ -261,7 +261,7 @@ func updateComment(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := cmt.updateComment(a.db)
+	result := cmt.updateComment(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
@@ -273,7 +273,7 @@ func deleteComment(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
 	var cmt comment = comment{ID: cID}
-	result := cmt.deleteComment(a.db)
+	result := cmt.deleteComment(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}

@@ -17,7 +17,7 @@ var reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
 
 func mainHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u := getCurrentUser(a.db, r)
+		u := getCurrentUser(a.DB, r)
 		t, err := template.ParseFiles("./templates/index.html")
 		if err != nil {
 			fmt.Println(err)
@@ -58,13 +58,13 @@ func publicHandler() http.Handler {
 
 func logoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u := getCurrentUser(a.db, r)
+		u := getCurrentUser(a.DB, r)
 		if u.ID == 0 {
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
 		u.AccessToken = calculateSignature(generateAccessToken(), "provider")
-		u.updateAccessToken(a.db)
+		u.updateAccessToken(a.DB)
 		cookie := http.Cookie{Name: "UAAT", Path: "/", MaxAge: -1}
 		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, "/", http.StatusFound)
@@ -152,7 +152,7 @@ func listPostsHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var pp posts
-	result := pp.listPosts(a.db, param)
+	result := pp.listPosts(a.DB, param)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			w.WriteHeader(http.StatusNotFound)
@@ -191,7 +191,7 @@ func getPostByIDHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var p post
-	result := p.getPost(a.db, param)
+	result := p.getPost(a.DB, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error":""}`))
@@ -221,7 +221,7 @@ type createPostStruct struct {
 //@Router /posts/ [POST]
 //@Security ApiKeyAuth
 func createPostHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.db, r)
+	u := getCurrentUser(a.DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -243,7 +243,7 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.UserID = u.ID
-	result := p.createPost(a.db)
+	result := p.createPost(a.DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":""}`))
@@ -266,7 +266,7 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/ [put]
 //@Security ApiKeyAuth
 func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.db, r)
+	u := getCurrentUser(a.DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -288,7 +288,7 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.UserID = u.ID
-	result := p.updatePost(a.db)
+	result := p.updatePost(a.DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":""}`))
@@ -307,7 +307,7 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/{id} [delete]
 //@Security ApiKeyAuth
 func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.db, r)
+	u := getCurrentUser(a.DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -321,7 +321,7 @@ func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var p post = post{ID: pID, UserID: u.ID}
-	result := p.deletePost(a.db)
+	result := p.deletePost(a.DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -348,7 +348,7 @@ func listPostCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var cc comments
-	result := cc.listComments(a.db, param)
+	result := cc.listComments(a.DB, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -420,7 +420,7 @@ func listCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var cc comments
-	result := cc.listComments(a.db, param)
+	result := cc.listComments(a.DB, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -451,7 +451,7 @@ func getCommentByIDHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var cmnt comment
-	result := cmnt.getComment(a.db, param)
+	result := cmnt.getComment(a.DB, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error":""}`))
@@ -483,7 +483,7 @@ type createCommentStruct struct {
 //@Router /comments/ [post]
 //@Security ApiKeyAuth
 func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.db, r)
+	u := getCurrentUser(a.DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -505,7 +505,7 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.UserID = u.ID
-	result := c.createComment(a.db)
+	result := c.createComment(a.DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":""}`))
@@ -528,7 +528,7 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/ [put]
 //@Security ApiKeyAuth
 func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.db, r)
+	u := getCurrentUser(a.DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -549,7 +549,7 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.UserID = u.ID
-	result := c.updateComment(a.db)
+	result := c.updateComment(a.DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":""}`))
@@ -568,7 +568,7 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/{id} [delete]
 //@Security ApiKeyAuth
 func deleteCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.db, r)
+	u := getCurrentUser(a.DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -582,7 +582,7 @@ func deleteCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var c comment = comment{ID: cID, UserID: u.ID}
-	result := c.deleteComment(a.db)
+	result := c.deleteComment(a.DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))

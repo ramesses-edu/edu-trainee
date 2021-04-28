@@ -5,19 +5,21 @@ import (
 	"log"
 	"net/http"
 
+	"edu-trainee/rest/application"
 	"edu-trainee/rest/docs"
 
+	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-var (
-	userDB string = "utest"
-	passDB string = "12345"
-	hostDB string = "localhost"
-	portDB string = "3306"
-	nameDB string = "edudb"
-	a      Application
-)
+var a application.Application
+
+func init() {
+	// loads values from .env into the system
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
+}
 
 // @title Education Forum API
 // @version 1.0
@@ -38,9 +40,9 @@ var (
 // @in header
 // @name APIKey
 func main() {
-	a = Application{}
-	a.initApp(userDB, passDB, hostDB, portDB, nameDB)
-	sql, err := a.db.DB()
+	a = application.Application{}
+	a.InitApplication()
+	sql, err := a.DB.DB()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,7 +57,7 @@ func main() {
 	defer cancel()
 	go echoStart(ctx, "localhost:8081")
 
-	a.ListenAndServe("localhost:80")
+	a.ListenAndServe()
 }
 func initializeRoutes(router *http.ServeMux) {
 	router.Handle("/", mainHandler())
