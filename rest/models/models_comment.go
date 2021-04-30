@@ -1,10 +1,7 @@
 package models
 
 import (
-	"encoding/json"
 	"encoding/xml"
-	"fmt"
-	"net/http"
 	"regexp"
 
 	"gorm.io/gorm"
@@ -17,27 +14,6 @@ type Comments struct {
 
 func (cc *Comments) ListComments(db *gorm.DB, param map[string]interface{}) *gorm.DB {
 	return db.Where(param).Find(&cc.Comments)
-}
-func (cc *Comments) ResponseJSON(w http.ResponseWriter, r *http.Request) {
-	jsonB, err := json.MarshalIndent(cc.Comments, "", "  ")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, string(jsonB))
-}
-func (cc *Comments) ResponseXML(w http.ResponseWriter, r *http.Request) {
-
-	xmlB, err := xml.MarshalIndent(cc, "", "  ")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/xml")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, string(xmlB))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////

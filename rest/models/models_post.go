@@ -1,10 +1,7 @@
 package models
 
 import (
-	"encoding/json"
 	"encoding/xml"
-	"fmt"
-	"net/http"
 
 	"gorm.io/gorm"
 )
@@ -16,27 +13,6 @@ type Posts struct {
 
 func (pp *Posts) ListPosts(db *gorm.DB, param map[string]interface{}) *gorm.DB {
 	return db.Where(param).Find(&pp.Posts)
-}
-
-func (pp *Posts) ResponseJSON(w http.ResponseWriter, r *http.Request) {
-	jsonB, err := json.MarshalIndent(pp.Posts, "", "  ")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, string(jsonB))
-}
-func (pp *Posts) ResponseXML(w http.ResponseWriter, r *http.Request) {
-	xmlB, err := xml.MarshalIndent(pp, "", "  ")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/xml")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, string(xmlB))
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

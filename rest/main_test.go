@@ -22,6 +22,8 @@ func TestMain(t *testing.M) {
 	a = application.Application{}
 	a.InitApplication()
 	httphandlers.InitRoutes(a.Router, a.DB)
+	authorization.A = a
+	httphandlers.DB = a.DB
 	createTestUser(a.DB)
 	code := t.Run()
 	clearTableUsers()
@@ -357,20 +359,20 @@ func TestGetPost(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBody []models.Post
+	var umBody models.Post
 	json.Unmarshal(resp.Body.Bytes(), &umBody)
-	if len(umBody) == 0 {
-		t.Errorf("ListPosts:zero-array in response. Expected length = 1")
+	if umBody.ID != 1 {
+		t.Errorf("ListPosts: post.id expected 1. got %d", umBody.ID)
 	}
 	//in xml
 	request, _ = http.NewRequest(http.MethodGet, "/posts/1?xml", nil)
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBodyXML models.Posts
+	var umBodyXML models.Post
 	xml.Unmarshal(resp.Body.Bytes(), &umBodyXML)
-	if len(umBodyXML.Posts) == 0 {
-		t.Errorf("ListPost in xml: zero array in response. Expected length = 1")
+	if umBodyXML.ID != 1 {
+		t.Errorf("ListPosts: post.id expected 1. got %d", umBodyXML.ID)
 	}
 }
 func TestGetComment(t *testing.T) {
@@ -382,20 +384,20 @@ func TestGetComment(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBody []models.Comment
+	var umBody models.Comment
 	json.Unmarshal(resp.Body.Bytes(), &umBody)
-	if len(umBody) == 0 {
-		t.Errorf("ListPosts:zero-array in response. Expected length = 1")
+	if umBody.ID != 1 {
+		t.Errorf("ListPosts: comment.id expected 1. got %d", umBody.ID)
 	}
 	//in xml
 	request, _ = http.NewRequest(http.MethodGet, "/comments/1?xml", nil)
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBodyXML models.Comments
+	var umBodyXML models.Comment
 	xml.Unmarshal(resp.Body.Bytes(), &umBodyXML)
-	if len(umBodyXML.Comments) == 0 {
-		t.Errorf("ListPost in xml: zero array in response. Expected length = 1")
+	if umBodyXML.ID != 1 {
+		t.Errorf("ListPosts: comment.id expected 1. got %d", umBodyXML.ID)
 	}
 }
 func TestCreatePost(t *testing.T) {
@@ -457,7 +459,7 @@ func TestUpdatePost(t *testing.T) {
 	request, _ := http.NewRequest(http.MethodGet, "/posts/1", nil)
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
-	var origin []models.Post
+	var origin models.Post
 	json.Unmarshal(resp.Body.Bytes(), &origin)
 	reqData := []byte(`{"id":1, "title":"test update", "body":"test update"}`)
 	request, _ = http.NewRequest(http.MethodPut, "/posts", bytes.NewBuffer(reqData))
@@ -466,14 +468,14 @@ func TestUpdatePost(t *testing.T) {
 	checkRespCode(t, http.StatusOK, resp.Code)
 	var update models.Post
 	json.Unmarshal(resp.Body.Bytes(), &update)
-	if origin[0].ID != update.ID {
-		t.Errorf("Origin id: %d and updated id: %d mismutch", origin[0].ID, update.ID)
+	if origin.ID != update.ID {
+		t.Errorf("Origin id: %d and updated id: %d mismutch", origin.ID, update.ID)
 	}
-	if origin[0].Title == update.Title {
-		t.Errorf("Expected the title to change from '%v' to 'test update'. Got '%v'", origin[0].Title, update.Title)
+	if origin.Title == update.Title {
+		t.Errorf("Expected the title to change from '%v' to 'test update'. Got '%v'", origin.Title, update.Title)
 	}
-	if origin[0].Body == update.Body {
-		t.Errorf("Expected the body to change from '%v' to 'test update'. Got '%v'", origin[0].Body, update.Body)
+	if origin.Body == update.Body {
+		t.Errorf("Expected the body to change from '%v' to 'test update'. Got '%v'", origin.Body, update.Body)
 	}
 }
 func TestUpdateComment(t *testing.T) {
@@ -484,7 +486,7 @@ func TestUpdateComment(t *testing.T) {
 	request, _ := http.NewRequest(http.MethodGet, "/comments/1", nil)
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
-	var origin []models.Comment
+	var origin models.Comment
 	json.Unmarshal(resp.Body.Bytes(), &origin)
 	reqData := []byte(`{"id":1, "postId":1 , "name":"test update", "body":"test update", "email":"testupd@test.test"}`)
 	request, _ = http.NewRequest(http.MethodPut, "/comments", bytes.NewBuffer(reqData))
@@ -493,17 +495,17 @@ func TestUpdateComment(t *testing.T) {
 	checkRespCode(t, http.StatusOK, resp.Code)
 	var update models.Comment
 	json.Unmarshal(resp.Body.Bytes(), &update)
-	if origin[0].ID != update.ID {
-		t.Errorf("Origin id: %d and updated id: %d mismutch", origin[0].ID, update.ID)
+	if origin.ID != update.ID {
+		t.Errorf("Origin id: %d and updated id: %d mismutch", origin.ID, update.ID)
 	}
-	if origin[0].Name == update.Name {
-		t.Errorf("Expected the name to change from '%v' to 'test update'. Got '%v'", origin[0].Name, update.Name)
+	if origin.Name == update.Name {
+		t.Errorf("Expected the name to change from '%v' to 'test update'. Got '%v'", origin.Name, update.Name)
 	}
-	if origin[0].Body == update.Body {
-		t.Errorf("Expected the body to change from '%v' to 'test update'. Got '%v'", origin[0].Body, update.Body)
+	if origin.Body == update.Body {
+		t.Errorf("Expected the body to change from '%v' to 'test update'. Got '%v'", origin.Body, update.Body)
 	}
-	if origin[0].Email == update.Email {
-		t.Errorf("Expected the email to change from '%v' to 'test update'. Got '%v'", origin[0].Body, update.Body)
+	if origin.Email == update.Email {
+		t.Errorf("Expected the email to change from '%v' to 'test update'. Got '%v'", origin.Body, update.Body)
 	}
 }
 func TestDeletePost(t *testing.T) {

@@ -8,6 +8,8 @@ import (
 	"edu-trainee/rest/application"
 	"edu-trainee/rest/authorization"
 	"edu-trainee/rest/docs"
+	"edu-trainee/rest/echofeature"
+
 	"edu-trainee/rest/httphandlers"
 
 	"github.com/joho/godotenv"
@@ -60,7 +62,8 @@ func main() {
 	//echo
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go echoStart(ctx, "localhost:8081")
+	
+	go echofeature.EchoStart(ctx, "localhost:8081")
 
 	a.ListenAndServe()
 }

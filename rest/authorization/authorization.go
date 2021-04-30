@@ -27,12 +27,6 @@ func generateOauthStateProvider() string {
 	state := base64.URLEncoding.EncodeToString(b)
 	return state
 }
-func GenerateAccessToken() string {
-	b := make([]byte, 64)
-	rand.Read(b)
-	state := base64.URLEncoding.EncodeToString(b)
-	return state
-}
 
 func buildAuthHeader(method, path string, params map[string]string) string {
 	vals := url.Values{}
@@ -71,6 +65,13 @@ func CalculateSignature(base, key string) string {
 	hash.Write([]byte(base))
 	signature := hash.Sum(nil)
 	return base64.StdEncoding.EncodeToString(signature)
+}
+
+func GenerateAccessToken() string {
+	b := make([]byte, 64)
+	rand.Read(b)
+	state := base64.URLEncoding.EncodeToString(b)
+	return state
 }
 
 func GetCurrentUser(db *gorm.DB, r *http.Request) models.User {
