@@ -85,7 +85,7 @@ var doc = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.comment"
+                            "$ref": "#/definitions/models.Comment"
                         }
                     }
                 ],
@@ -122,7 +122,7 @@ var doc = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.createCommentStruct"
+                            "$ref": "#/definitions/httphandlers.createCommentStruct"
                         }
                     }
                 ],
@@ -266,7 +266,7 @@ var doc = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.post"
+                            "$ref": "#/definitions/models.Post"
                         }
                     }
                 ],
@@ -303,7 +303,7 @@ var doc = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/main.createPostStruct"
+                            "$ref": "#/definitions/httphandlers.createPostStruct"
                         }
                     }
                 ],
@@ -431,7 +431,35 @@ var doc = `{
         }
     },
     "definitions": {
-        "main.comment": {
+        "httphandlers.createCommentStruct": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "postId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httphandlers.createPostStruct": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Comment": {
             "type": "object",
             "properties": {
                 "body": {
@@ -454,35 +482,7 @@ var doc = `{
                 }
             }
         },
-        "main.createCommentStruct": {
-            "type": "object",
-            "properties": {
-                "body": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "postId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "main.createPostStruct": {
-            "type": "object",
-            "properties": {
-                "body": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "main.post": {
+        "models.Post": {
             "type": "object",
             "properties": {
                 "body": {

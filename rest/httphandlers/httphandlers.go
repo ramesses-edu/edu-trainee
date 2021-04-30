@@ -1,23 +1,80 @@
-package main
+package httphandlers
 
 import (
+	"edu-trainee/rest/authorization"
+	"edu-trainee/rest/middleware"
+	"edu-trainee/rest/models"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"text/template"
 
+	httpSwagger "github.com/swaggo/http-swagger"
 	"gorm.io/gorm"
 )
 
-var reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
+var (
+	DB    *gorm.DB
+	reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
+)
+
+func InitRoutes(router *http.ServeMux, db *gorm.DB) {
+	router.Handle("/", mainHandler())
+	router.Handle("/public", http.NotFoundHandler())
+	router.Handle("/public/", publicHandler())
+	router.Handle("/logout/", logoutHandler())
+	router.Handle("/auth/", authentification())
+	router.Handle("/posts", middleware.Autorization(http.HandlerFunc(postsHandler), db))
+	router.Handle("/posts/", middleware.Autorization(http.HandlerFunc(postsHandler), db))
+	router.Handle("/comments", middleware.Autorization(http.HandlerFunc(commentsHandler), db))
+	router.Handle("/comments/", middleware.Autorization(http.HandlerFunc(commentsHandler), db))
+	router.HandleFunc("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("localhost/swagger/doc.json"),
+	))
+}
+
+func authentification() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rPath := r.URL.Path
+		reGoogleProvider := regexp.MustCompile(`\/auth\/google(\/)??`)
+		reFacebookProvider := regexp.MustCompile(`\/auth\/facebook(\/)??`)
+		reTwitterProvider := regexp.MustCompile(`\/auth\/twitter(\/)??`)
+		reCallback := regexp.MustCompile(`\/auth\/callback(\/)??\w+`)
+		switch {
+		case reGoogleProvider.Match([]byte(rPath)):
+			authorization.AuthGoogle(w, r)
+		case reFacebookProvider.Match([]byte(rPath)):
+			authorization.AuthFacebook(w, r)
+		case reTwitterProvider.Match([]byte(rPath)):
+			authorization.AuthTwitter(w, r)
+		case reCallback.Match([]byte(rPath)):
+			oauthCallback(w, r)
+		}
+	})
+}
+
+func oauthCallback(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	reProviderGoogle := regexp.MustCompile(`\/auth\/callback\/google(\/)??`)
+	reProviderFacebook := regexp.MustCompile(`\/auth\/callback\/facebook(\/)??`)
+	reProviderTwitter := regexp.MustCompile(`\/auth\/callback\/twitter(\/)??`)
+	switch {
+	case reProviderGoogle.Match([]byte(r.URL.Path)):
+		authorization.CallbackGoogle(w, r)
+	case reProviderFacebook.Match([]byte(r.URL.Path)):
+		authorization.CallbackFacebook(w, r)
+	case reProviderTwitter.Match([]byte(r.URL.Path)):
+		authorization.CallbackTwitter(w, r)
+	}
+}
 
 func mainHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u := getCurrentUser(a.DB, r)
+		u := authorization.GetCurrentUser(DB, r)
 		t, err := template.ParseFiles("./templates/index.html")
 		if err != nil {
 			fmt.Println(err)
@@ -58,13 +115,13 @@ func publicHandler() http.Handler {
 
 func logoutHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u := getCurrentUser(a.DB, r)
+		u := authorization.GetCurrentUser(DB, r)
 		if u.ID == 0 {
 			http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 			return
 		}
-		u.AccessToken = calculateSignature(generateAccessToken(), "provider")
-		u.updateAccessToken(a.DB)
+		u.AccessToken = authorization.CalculateSignature(authorization.GenerateAccessToken(), "provider")
+		u.UpdateAccessToken(DB)
 		cookie := http.Cookie{Name: "UAAT", Path: "/", MaxAge: -1}
 		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, "/", http.StatusFound)
@@ -151,8 +208,8 @@ func listPostsHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	var pp posts
-	result := pp.listPosts(a.DB, param)
+	var pp models.Posts
+	result := pp.ListPosts(DB, param)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			w.WriteHeader(http.StatusNotFound)
@@ -164,9 +221,9 @@ func listPostsHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if responseXML(r) {
-		pp.responseXML(w, r)
+		pp.ResponseXML(w, r)
 	} else {
-		pp.responseJSON(w, r)
+		pp.ResponseJSON(w, r)
 	}
 }
 
@@ -190,18 +247,18 @@ func getPostByIDHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var p post
-	result := p.getPost(a.DB, param)
+	var p models.Post
+	result := p.GetPost(DB, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var pp posts = posts{Posts: []post{p}}
+	var pp models.Posts = models.Posts{Posts: []models.Post{p}}
 	if responseXML(r) {
-		pp.responseXML(w, r)
+		pp.ResponseXML(w, r)
 	} else {
-		pp.responseJSON(w, r)
+		pp.ResponseJSON(w, r)
 	}
 }
 
@@ -221,7 +278,7 @@ type createPostStruct struct {
 //@Router /posts/ [POST]
 //@Security ApiKeyAuth
 func createPostHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.DB, r)
+	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -235,7 +292,7 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var p post
+	var p models.Post
 	err = json.Unmarshal(reqBody, &p)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -243,7 +300,7 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.UserID = u.ID
-	result := p.createPost(a.DB)
+	result := p.CreatePost(DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":""}`))
@@ -259,14 +316,14 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Description update post
 //@Accept json
 //@Produce json
-//@Param RequestPost body post true "JSON structure for updating post"
+//@Param RequestPost body models.Post true "JSON structure for updating post"
 //@Success 200
 //@Failure 400
 //@Failure default
 //@Router /posts/ [put]
 //@Security ApiKeyAuth
 func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.DB, r)
+	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -280,7 +337,7 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var p post
+	var p models.Post
 	err = json.Unmarshal(reqBody, &p)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -288,7 +345,7 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.UserID = u.ID
-	result := p.updatePost(a.DB)
+	result := p.UpdatePost(DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":""}`))
@@ -307,7 +364,7 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/{id} [delete]
 //@Security ApiKeyAuth
 func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.DB, r)
+	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -320,8 +377,8 @@ func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var p post = post{ID: pID, UserID: u.ID}
-	result := p.deletePost(a.DB)
+	var p models.Post = models.Post{ID: pID, UserID: u.ID}
+	result := p.DeletePost(DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -347,17 +404,17 @@ func listPostCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var cc comments
-	result := cc.listComments(a.DB, param)
+	var cc models.Comments
+	result := cc.ListComments(DB, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	if responseXML(r) {
-		cc.responseXML(w, r)
+		cc.ResponseXML(w, r)
 	} else {
-		cc.responseJSON(w, r)
+		cc.ResponseJSON(w, r)
 	}
 }
 
@@ -419,17 +476,17 @@ func listCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	var cc comments
-	result := cc.listComments(a.DB, param)
+	var cc models.Comments
+	result := cc.ListComments(DB, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
 	if responseXML(r) {
-		cc.responseXML(w, r)
+		cc.ResponseXML(w, r)
 	} else {
-		cc.responseJSON(w, r)
+		cc.ResponseJSON(w, r)
 	}
 }
 
@@ -450,18 +507,18 @@ func getCommentByIDHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var cmnt comment
-	result := cmnt.getComment(a.DB, param)
+	var cmnt models.Comment
+	result := cmnt.GetComment(DB, param)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var cc comments = comments{Comments: []comment{cmnt}}
+	var cc models.Comments = models.Comments{Comments: []models.Comment{cmnt}}
 	if responseXML(r) {
-		cc.responseXML(w, r)
+		cc.ResponseXML(w, r)
 	} else {
-		cc.responseJSON(w, r)
+		cc.ResponseJSON(w, r)
 	}
 }
 
@@ -483,7 +540,7 @@ type createCommentStruct struct {
 //@Router /comments/ [post]
 //@Security ApiKeyAuth
 func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.DB, r)
+	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -497,7 +554,7 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var c comment
+	var c models.Comment
 	err = json.Unmarshal(reqBody, &c)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -505,7 +562,7 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.UserID = u.ID
-	result := c.createComment(a.DB)
+	result := c.CreateComment(DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":""}`))
@@ -521,14 +578,14 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@description update comment
 //@Accept json
 //@Produce json
-//@Param RequestPost body comment true "JSON structure for creating post"
+//@Param RequestPost body models.Comment true "JSON structure for creating post"
 //@Success 200
 //@Failure 400
 //@Failure default
 //@Router /comments/ [put]
 //@Security ApiKeyAuth
 func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.DB, r)
+	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -541,7 +598,7 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var c comment
+	var c models.Comment
 	err = json.Unmarshal(reqBody, &c)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -549,7 +606,7 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.UserID = u.ID
-	result := c.updateComment(a.DB)
+	result := c.UpdateComment(DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":""}`))
@@ -568,7 +625,7 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/{id} [delete]
 //@Security ApiKeyAuth
 func deleteCommentHTTP(w http.ResponseWriter, r *http.Request) {
-	u := getCurrentUser(a.DB, r)
+	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))
@@ -581,8 +638,8 @@ func deleteCommentHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error":""}`))
 		return
 	}
-	var c comment = comment{ID: cID, UserID: u.ID}
-	result := c.deleteComment(a.DB)
+	var c models.Comment = models.Comment{ID: cID, UserID: u.ID}
+	result := c.DeleteComment(DB)
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":""}`))

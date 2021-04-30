@@ -1,76 +1,70 @@
-package main
+package authorization
 
 import (
 	"context"
+	"edu-trainee/rest/models"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-
-	"golang.org/x/oauth2"
 )
 
-var (
-	oauthFacebook      *oauth2.Config
-	oauthStateFaceBook = ""
-)
-
-func authFacebook(w http.ResponseWriter, r *http.Request) {
-	Url, err := url.Parse(oauthFacebook.Endpoint.AuthURL)
+func AuthGoogle(w http.ResponseWriter, r *http.Request) {
+	URL, err := url.Parse(A.OauthGoogle.Endpoint.AuthURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	oauthStateFaceBook = generateOauthStateProvider()
-	cookie := http.Cookie{Name: "oauthstate", Value: oauthStateFaceBook, Expires: time.Now().Add(5 * time.Minute)}
+	//create stateToken for CSFR protect
+	oauthStateGoogle := generateOauthStateProvider()
+	cookie := http.Cookie{Name: "oauthstate", Value: oauthStateGoogle, Expires: time.Now().Add(5 * time.Minute)}
 	http.SetCookie(w, &cookie)
-	////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////
 	parameters := url.Values{}
-	parameters.Add("client_id", oauthFacebook.ClientID)
-	parameters.Add("scope", strings.Join(oauthFacebook.Scopes, " "))
-	parameters.Add("redirect_uri", oauthFacebook.RedirectURL)
+	parameters.Add("client_id", A.OauthGoogle.ClientID)
+	parameters.Add("scope", strings.Join(A.OauthGoogle.Scopes, " "))
+	parameters.Add("redirect_uri", A.OauthGoogle.RedirectURL)
 	parameters.Add("response_type", "code")
-	parameters.Add("state", oauthStateFaceBook)
-	Url.RawQuery = parameters.Encode()
-	url := Url.String()
+	parameters.Add("state", oauthStateGoogle)
+	URL.RawQuery = parameters.Encode()
+	url := URL.String()
+	//redirect to provider Authentification
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
-func callbackFacebook(w http.ResponseWriter, r *http.Request) {
+func CallbackGoogle(w http.ResponseWriter, r *http.Request) {
 	state := r.FormValue("state")
 	oauthstate, err := r.Cookie("oauthstate")
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
+	//verify stateTokens
 	if state != (oauthstate.Value) {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	///////////////////////////////////////////////////////////
+	//exchange code to provider Access&Refresh tokens
 	code := r.FormValue("code")
-	token, err := oauthFacebook.Exchange(context.Background(), code)
-	if err != nil {
-		fmt.Printf("oauthConf.Exchange() failed with '%s'\n", err)
+	if code == "" {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	vals := url.Values{}
-	vals.Add("fields", "id,name,email")
-	vals.Add("access_token", url.QueryEscape(token.AccessToken))
-	resp, err := http.Get(fmt.Sprintf("https://graph.facebook.com/%s/me?%s", a.Config.Facebook.APIVersion, vals.Encode()))
+	token, err := A.OauthGoogle.Exchange(context.Background(), code)
 	if err != nil {
-		fmt.Printf("Get: %s\n", err)
+		return
+	}
+	//get userinfo on provider resource
+	resp, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + url.QueryEscape(token.AccessToken))
+	if err != nil {
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
 	defer resp.Body.Close()
 	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("ReadAll: %s\n", err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
@@ -87,26 +81,26 @@ func callbackFacebook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//generate new accessToken for user
-	accessToken := generateAccessToken()
-	hashAccToken := calculateSignature(accessToken, "provider")
+	accessToken := GenerateAccessToken()
+	hashAccToken := CalculateSignature(accessToken, "provider")
 	//check user registration
-	var u user
-	result := u.getUser(a.DB, map[string]interface{}{
+	var u models.User
+	result := u.GetUser(A.DB, map[string]interface{}{
 		"login":    respMap["id"],
-		"provider": "facebook",
+		"provider": "google",
 	})
 	//if user not found, register new user
 	if result.Error != nil || result.RowsAffected == 0 {
-		u = user{
+		u = models.User{
 			Login:       respMap["id"].(string),
-			Provider:    "facebook",
+			Provider:    "google",
 			Name:        respMap["name"].(string),
 			AccessToken: hashAccToken,
 		}
-		result = u.createUser(a.DB)
+		result = u.CreateUser(A.DB)
 	} else {
 		u.AccessToken = hashAccToken
-		u.updateAccessToken(a.DB)
+		u.UpdateAccessToken(A.DB)
 	}
 	//write cookies
 	if result.Error == nil {

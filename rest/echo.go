@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"edu-trainee/rest/authorization"
+	"edu-trainee/rest/models"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -53,9 +55,9 @@ func emwAutorization(next echo.HandlerFunc) echo.HandlerFunc {
 			c.String(http.StatusNetworkAuthenticationRequired, `{"error":""}`)
 			return nil
 		}
-		hashAccTok := calculateSignature(accessToken, "provider")
-		var u user
-		result := u.getUser(a.DB, map[string]interface{}{
+		hashAccTok := authorization.CalculateSignature(accessToken, "provider")
+		var u models.User
+		result := u.GetUser(a.DB, map[string]interface{}{
 			"access_token": hashAccTok,
 		})
 		if result.Error != nil || result.RowsAffected == 0 {
@@ -81,8 +83,8 @@ func listPosts(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "")
 		}
 	}
-	var pp posts
-	result := pp.listPosts(a.DB, param)
+	var pp models.Posts
+	result := pp.ListPosts(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -104,12 +106,12 @@ func getPostById(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "")
 	}
-	var p post
-	result := p.getPost(a.DB, param)
+	var p models.Post
+	result := p.GetPost(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	var pp posts = posts{Posts: []post{p}}
+	var pp models.Posts = models.Posts{Posts: []models.Post{p}}
 	if respXML {
 		return c.XML(http.StatusOK, &pp)
 	}
@@ -128,8 +130,8 @@ func listPostComments(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
 	param["postId"] = postId
-	var cc comments
-	result := cc.listComments(a.DB, param)
+	var cc models.Comments
+	result := cc.ListComments(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -144,12 +146,12 @@ func createPost(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
-	var p post
+	var p models.Post
 	err = json.Unmarshal(reqBody, &p)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := p.createPost(a.DB)
+	result := p.CreatePost(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
@@ -161,12 +163,12 @@ func updatePost(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
-	var p post
+	var p models.Post
 	err = json.Unmarshal(reqBody, &p)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := p.updatePost(a.DB)
+	result := p.UpdatePost(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
@@ -177,8 +179,8 @@ func deletePost(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
-	var p post = post{ID: pID}
-	result := p.deletePost(a.DB)
+	var p models.Post = models.Post{ID: pID}
+	result := p.DeletePost(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -199,8 +201,8 @@ func listComments(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, "")
 		}
 	}
-	var cc comments
-	result := cc.listComments(a.DB, param)
+	var cc models.Comments
+	result := cc.ListComments(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
@@ -222,12 +224,12 @@ func getCommentByID(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "")
 	}
-	var cmnt comment
-	result := cmnt.getComment(a.DB, param)
+	var cmnt models.Comment
+	result := cmnt.GetComment(a.DB, param)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	var cc comments = comments{Comments: []comment{cmnt}}
+	var cc models.Comments = models.Comments{Comments: []models.Comment{cmnt}}
 	if respXML {
 		return c.XML(http.StatusOK, &cc)
 	}
@@ -239,12 +241,12 @@ func createComment(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
-	var cmt comment
+	var cmt models.Comment
 	err = json.Unmarshal(reqBody, &cmt)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := cmt.createComment(a.DB)
+	result := cmt.CreateComment(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
@@ -256,12 +258,12 @@ func updateComment(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
-	var cmt comment
+	var cmt models.Comment
 	err = json.Unmarshal(reqBody, &cmt)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}
-	result := cmt.updateComment(a.DB)
+	result := cmt.UpdateComment(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
@@ -272,8 +274,8 @@ func deleteComment(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest)
 	}
-	var cmt comment = comment{ID: cID}
-	result := cmt.deleteComment(a.DB)
+	var cmt models.Comment = models.Comment{ID: cID}
+	result := cmt.DeleteComment(a.DB)
 	if result.Error != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError)
 	}

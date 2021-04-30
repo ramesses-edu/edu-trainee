@@ -1,6 +1,24 @@
 basePath: /
 definitions:
-  main.comment:
+  httphandlers.createCommentStruct:
+    properties:
+      body:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      postId:
+        type: integer
+    type: object
+  httphandlers.createPostStruct:
+    properties:
+      body:
+        type: string
+      title:
+        type: string
+    type: object
+  models.Comment:
     properties:
       body:
         type: string
@@ -15,25 +33,7 @@ definitions:
       userId:
         type: integer
     type: object
-  main.createCommentStruct:
-    properties:
-      body:
-        type: string
-      email:
-        type: string
-      name:
-        type: string
-      postId:
-        type: integer
-    type: object
-  main.createPostStruct:
-    properties:
-      body:
-        type: string
-      title:
-        type: string
-    type: object
-  main.post:
+  models.Post:
     properties:
       body:
         type: string
@@ -87,7 +87,7 @@ paths:
         name: RequestPost
         required: true
         schema:
-          $ref: '#/definitions/main.createCommentStruct'
+          $ref: '#/definitions/httphandlers.createCommentStruct'
       produces:
       - application/json
       responses:
@@ -112,7 +112,7 @@ paths:
         name: RequestPost
         required: true
         schema:
-          $ref: '#/definitions/main.comment'
+          $ref: '#/definitions/models.Comment'
       produces:
       - application/json
       responses:
@@ -199,7 +199,7 @@ paths:
         name: RequestPost
         required: true
         schema:
-          $ref: '#/definitions/main.createPostStruct'
+          $ref: '#/definitions/httphandlers.createPostStruct'
       produces:
       - application/json
       responses:
@@ -224,7 +224,7 @@ paths:
         name: RequestPost
         required: true
         schema:
-          $ref: '#/definitions/main.post'
+          $ref: '#/definitions/models.Post'
       produces:
       - application/json
       responses:

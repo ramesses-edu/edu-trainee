@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"edu-trainee/rest/application"
+	"edu-trainee/rest/authorization"
+	"edu-trainee/rest/httphandlers"
+	"edu-trainee/rest/models"
 	"encoding/json"
 	"encoding/xml"
 	"log"
@@ -18,7 +21,7 @@ import (
 func TestMain(t *testing.M) {
 	a = application.Application{}
 	a.InitApplication()
-	initializeRoutes(a.Router)
+	httphandlers.InitRoutes(a.Router, a.DB)
 	createTestUser(a.DB)
 	code := t.Run()
 	clearTableUsers()
@@ -28,7 +31,7 @@ func TestMain(t *testing.M) {
 }
 
 func createTestUser(db *gorm.DB) {
-	var u user = user{Login: "test", Name: "test", Provider: "test", AccessToken: calculateSignature("test", "provider")}
+	var u models.User = models.User{Login: "test", Name: "test", Provider: "test", AccessToken: authorization.CalculateSignature("test", "provider")}
 	result := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&u)
 	if result.Error != nil {
 		log.Fatal(result.Error)
@@ -193,7 +196,7 @@ func TestListPosts(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBody []post
+	var umBody []models.Post
 	json.Unmarshal(resp.Body.Bytes(), &umBody)
 	if len(umBody) == 0 {
 		t.Errorf("ListPosts:zero-array in response. Expected length = 10")
@@ -212,7 +215,7 @@ func TestListPosts(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBodyXML posts
+	var umBodyXML models.Posts
 	xml.Unmarshal(resp.Body.Bytes(), &umBodyXML)
 	if len(umBodyXML.Posts) == 0 {
 		t.Errorf("ListPost in xml: zero array in response. Expected length = 10")
@@ -249,7 +252,7 @@ func TestListComments(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBody []comment
+	var umBody []models.Comment
 	json.Unmarshal(resp.Body.Bytes(), &umBody)
 	if len(umBody) == 0 {
 		t.Errorf("ListPosts:zero-array in response. Expected length = 10")
@@ -268,7 +271,7 @@ func TestListComments(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBodyXML comments
+	var umBodyXML models.Comments
 	xml.Unmarshal(resp.Body.Bytes(), &umBodyXML)
 	if len(umBodyXML.Comments) == 0 {
 		t.Errorf("ListPost in xml: zero array in response. Expected length = 10")
@@ -307,7 +310,7 @@ func TestListPostComments(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBody []comment
+	var umBody []models.Comment
 	json.Unmarshal(resp.Body.Bytes(), &umBody)
 	if len(umBody) == 0 {
 		t.Errorf("ListPosts:zero-array in response. Expected length = 10")
@@ -317,7 +320,7 @@ func TestListPostComments(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBodyXML comments
+	var umBodyXML models.Comments
 	xml.Unmarshal(resp.Body.Bytes(), &umBodyXML)
 	if len(umBodyXML.Comments) == 0 {
 		t.Errorf("ListPost in xml: zero array in response. Expected length = 10")
@@ -354,7 +357,7 @@ func TestGetPost(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBody []post
+	var umBody []models.Post
 	json.Unmarshal(resp.Body.Bytes(), &umBody)
 	if len(umBody) == 0 {
 		t.Errorf("ListPosts:zero-array in response. Expected length = 1")
@@ -364,7 +367,7 @@ func TestGetPost(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBodyXML posts
+	var umBodyXML models.Posts
 	xml.Unmarshal(resp.Body.Bytes(), &umBodyXML)
 	if len(umBodyXML.Posts) == 0 {
 		t.Errorf("ListPost in xml: zero array in response. Expected length = 1")
@@ -379,7 +382,7 @@ func TestGetComment(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBody []comment
+	var umBody []models.Comment
 	json.Unmarshal(resp.Body.Bytes(), &umBody)
 	if len(umBody) == 0 {
 		t.Errorf("ListPosts:zero-array in response. Expected length = 1")
@@ -389,7 +392,7 @@ func TestGetComment(t *testing.T) {
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var umBodyXML comments
+	var umBodyXML models.Comments
 	xml.Unmarshal(resp.Body.Bytes(), &umBodyXML)
 	if len(umBodyXML.Comments) == 0 {
 		t.Errorf("ListPost in xml: zero array in response. Expected length = 1")
@@ -454,14 +457,14 @@ func TestUpdatePost(t *testing.T) {
 	request, _ := http.NewRequest(http.MethodGet, "/posts/1", nil)
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
-	var origin []post
+	var origin []models.Post
 	json.Unmarshal(resp.Body.Bytes(), &origin)
 	reqData := []byte(`{"id":1, "title":"test update", "body":"test update"}`)
 	request, _ = http.NewRequest(http.MethodPut, "/posts", bytes.NewBuffer(reqData))
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var update post
+	var update models.Post
 	json.Unmarshal(resp.Body.Bytes(), &update)
 	if origin[0].ID != update.ID {
 		t.Errorf("Origin id: %d and updated id: %d mismutch", origin[0].ID, update.ID)
@@ -481,14 +484,14 @@ func TestUpdateComment(t *testing.T) {
 	request, _ := http.NewRequest(http.MethodGet, "/comments/1", nil)
 	request.Header.Add("APIKey", "test")
 	resp := execRequest(request)
-	var origin []comment
+	var origin []models.Comment
 	json.Unmarshal(resp.Body.Bytes(), &origin)
 	reqData := []byte(`{"id":1, "postId":1 , "name":"test update", "body":"test update", "email":"testupd@test.test"}`)
 	request, _ = http.NewRequest(http.MethodPut, "/comments", bytes.NewBuffer(reqData))
 	request.Header.Add("APIKey", "test")
 	resp = execRequest(request)
 	checkRespCode(t, http.StatusOK, resp.Code)
-	var update comment
+	var update models.Comment
 	json.Unmarshal(resp.Body.Bytes(), &update)
 	if origin[0].ID != update.ID {
 		t.Errorf("Origin id: %d and updated id: %d mismutch", origin[0].ID, update.ID)

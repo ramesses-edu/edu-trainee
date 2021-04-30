@@ -3,15 +3,14 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 
 	"edu-trainee/rest/application"
+	"edu-trainee/rest/authorization"
 	"edu-trainee/rest/docs"
+	"edu-trainee/rest/httphandlers"
 
 	"github.com/joho/godotenv"
-	httpSwagger "github.com/swaggo/http-swagger"
-	"golang.org/x/oauth2"
 )
 
 var a application.Application
@@ -46,32 +45,14 @@ func main() {
 
 	a = application.Application{}
 	a.InitApplication()
-	oauthGoogle = &oauth2.Config{
-		ClientID:     a.Config.Google.ClientID,
-		ClientSecret: a.Config.Google.ClientSecret,
-		RedirectURL:  a.Config.Google.RedirectURL,
-		Scopes:       a.Config.Google.Scopes,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  a.Config.Google.AuthURL,
-			TokenURL: a.Config.Google.TokenURL,
-		},
-	}
-	oauthFacebook = &oauth2.Config{
-		ClientID:     a.Config.Facebook.ClientID,
-		ClientSecret: a.Config.Facebook.ClientSecret,
-		RedirectURL:  a.Config.Facebook.RedirectURL,
-		Scopes:       a.Config.Facebook.Scopes,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  a.Config.Facebook.AuthURL,
-			TokenURL: a.Config.Facebook.TokenURL,
-		},
-	}
 	sql, err := a.DB.DB()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer sql.Close()
-	initializeRoutes(a.Router)
+	httphandlers.InitRoutes(a.Router, a.DB)
+	authorization.A = a
+	httphandlers.DB = a.DB
 
 	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"http"}
@@ -82,19 +63,4 @@ func main() {
 	go echoStart(ctx, "localhost:8081")
 
 	a.ListenAndServe()
-}
-
-func initializeRoutes(router *http.ServeMux) {
-	router.Handle("/", mainHandler())
-	router.Handle("/public", http.NotFoundHandler())
-	router.Handle("/public/", publicHandler())
-	router.Handle("/logout/", logoutHandler())
-	router.Handle("/auth/", mwAuthentification())
-	router.Handle("/posts", mwAutorization(http.HandlerFunc(postsHandler)))
-	router.Handle("/posts/", mwAutorization(http.HandlerFunc(postsHandler)))
-	router.Handle("/comments", mwAutorization(http.HandlerFunc(commentsHandler)))
-	router.Handle("/comments/", mwAutorization(http.HandlerFunc(commentsHandler)))
-	router.HandleFunc("/swagger/", httpSwagger.Handler(
-		httpSwagger.URL("localhost/swagger/doc.json"),
-	))
 }

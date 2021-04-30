@@ -7,15 +7,18 @@ import (
 	"log"
 	"net/http"
 
+	"golang.org/x/oauth2"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 type Application struct {
-	DB     *gorm.DB
-	Router *http.ServeMux
-	Server *http.Server
-	Config *config.Config
+	DB            *gorm.DB
+	Router        *http.ServeMux
+	Server        *http.Server
+	Config        *config.Config
+	OauthGoogle   *oauth2.Config
+	OauthFacebook *oauth2.Config
 }
 
 func (a *Application) InitApplication() {
@@ -34,6 +37,26 @@ func (a *Application) InitApplication() {
 	initDBTables(a.DB)
 	//init Router
 	a.Router = http.NewServeMux()
+	a.OauthGoogle = &oauth2.Config{
+		ClientID:     a.Config.Google.ClientID,
+		ClientSecret: a.Config.Google.ClientSecret,
+		RedirectURL:  a.Config.Google.RedirectURL,
+		Scopes:       a.Config.Google.Scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  a.Config.Google.AuthURL,
+			TokenURL: a.Config.Google.TokenURL,
+		},
+	}
+	a.OauthFacebook = &oauth2.Config{
+		ClientID:     a.Config.Facebook.ClientID,
+		ClientSecret: a.Config.Facebook.ClientSecret,
+		RedirectURL:  a.Config.Facebook.RedirectURL,
+		Scopes:       a.Config.Facebook.Scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  a.Config.Facebook.AuthURL,
+			TokenURL: a.Config.Facebook.TokenURL,
+		},
+	}
 }
 
 func (a *Application) ListenAndServe() {
