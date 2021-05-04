@@ -1,6 +1,7 @@
 package httphandlers
 
 import (
+	"edu-trainee/rest/application"
 	"edu-trainee/rest/authorization"
 	"edu-trainee/rest/middleware"
 	"encoding/json"
@@ -16,7 +17,6 @@ import (
 )
 
 var (
-	DB    *gorm.DB
 	reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
 )
 
@@ -71,6 +71,7 @@ func oauthCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func mainHandler() http.Handler {
+	DB := application.CurrentApplication().DB
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := authorization.GetCurrentUser(DB, r)
 		t, err := template.ParseFiles("./templates/index.html")
@@ -112,6 +113,7 @@ func publicHandler() http.Handler {
 }
 
 func logoutHandler() http.Handler {
+	DB := application.CurrentApplication().DB
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := authorization.GetCurrentUser(DB, r)
 		if u.ID == 0 {

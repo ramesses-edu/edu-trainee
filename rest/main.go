@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"edu-trainee/rest/application"
-	"edu-trainee/rest/authorization"
 	"edu-trainee/rest/docs"
 	"edu-trainee/rest/echofeature"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var a application.Application
+var a *application.Application
 
 func init() {
 	// loads values from .env into the system
@@ -45,16 +44,9 @@ func init() {
 // @name APIKey
 func main() {
 
-	a = application.Application{}
-	a.InitApplication()
-	sql, err := a.DB.DB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer sql.Close()
+	a = application.New()
+	defer application.Close()
 	httphandlers.InitRoutes(a.Router, a.DB)
-	authorization.A = a
-	httphandlers.DB = a.DB
 
 	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"http"}
@@ -62,7 +54,7 @@ func main() {
 	//echo
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	go echofeature.EchoStart(ctx, "localhost:8081")
 
 	a.ListenAndServe()

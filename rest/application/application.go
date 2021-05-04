@@ -3,6 +3,7 @@ package application
 import (
 	"edu-trainee/rest/config"
 	"edu-trainee/rest/models"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
+
+var a *Application
 
 type Application struct {
 	DB            *gorm.DB
@@ -21,7 +24,7 @@ type Application struct {
 	OauthFacebook *oauth2.Config
 }
 
-func (a *Application) InitApplication() {
+func (a *Application) initApplication() {
 	//init configuration
 	a.Config = config.New()
 	//init DB connection
@@ -65,6 +68,24 @@ func (a *Application) ListenAndServe() {
 		Addr:    a.Config.HostAddr,
 	}
 	a.Server.ListenAndServe()
+}
+
+func New() *Application {
+	a = &Application{}
+	a.initApplication()
+	return a
+}
+func Close() error {
+	if a == nil {
+		return errors.New("nil application")
+	}
+	sql, _ := a.DB.DB()
+	sql.Close()
+	a = nil
+	return nil
+}
+func CurrentApplication() *Application {
+	return a
 }
 
 func initDBTables(db *gorm.DB) {

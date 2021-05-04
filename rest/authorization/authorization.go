@@ -17,10 +17,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	A application.Application
-)
-
 func generateOauthStateProvider() string {
 	b := make([]byte, 32)
 	rand.Read(b)
@@ -29,6 +25,7 @@ func generateOauthStateProvider() string {
 }
 
 func buildAuthHeader(method, path string, params map[string]string) string {
+	A := application.CurrentApplication()
 	vals := url.Values{}
 	vals.Add("oauth_consumer_key", A.Config.Twitter.TwitterAPIKey)
 	vals.Add("oauth_nonce", generateNonce())

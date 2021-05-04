@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"bytes"
+	"edu-trainee/rest/application"
 	"edu-trainee/rest/models"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 )
 
 func AuthTwitter(w http.ResponseWriter, r *http.Request) {
+	A := application.CurrentApplication()
 	reqTokUrl := A.Config.Twitter.ReqTokenURL
 	request, err := http.NewRequest(http.MethodPost, reqTokUrl, nil)
 	if err != nil {
@@ -50,6 +52,7 @@ func AuthTwitter(w http.ResponseWriter, r *http.Request) {
 }
 
 func CallbackTwitter(w http.ResponseWriter, r *http.Request) {
+	A := application.CurrentApplication()
 	o_token := r.FormValue("oauth_token")
 	o_verifier := r.FormValue("oauth_verifier")
 	oauthstate, err := r.Cookie("oauthstate")

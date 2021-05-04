@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"edu-trainee/rest/application"
 	"edu-trainee/rest/models"
 	"encoding/json"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 )
 
 func AuthGoogle(w http.ResponseWriter, r *http.Request) {
+	A := application.CurrentApplication()
 	URL, err := url.Parse(A.OauthGoogle.Endpoint.AuthURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -35,6 +37,7 @@ func AuthGoogle(w http.ResponseWriter, r *http.Request) {
 }
 
 func CallbackGoogle(w http.ResponseWriter, r *http.Request) {
+	A := application.CurrentApplication()
 	state := r.FormValue("state")
 	oauthstate, err := r.Cookie("oauthstate")
 	if err != nil {

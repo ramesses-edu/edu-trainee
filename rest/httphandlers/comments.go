@@ -1,6 +1,7 @@
 package httphandlers
 
 import (
+	"edu-trainee/rest/application"
 	"edu-trainee/rest/authorization"
 	"edu-trainee/rest/models"
 	"encoding/json"
@@ -58,6 +59,7 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/ [get]
 //@Security ApiKeyAuth
 func listCommentsHTTP(w http.ResponseWriter, r *http.Request) {
+	DB:= application.CurrentApplication().DB
 	var param map[string]interface{} = make(map[string]interface{})
 	postId := r.FormValue("postId")
 	if postId != "" {
@@ -92,6 +94,7 @@ func listCommentsHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/{id} [get]
 //@Security ApiKeyAuth
 func getCommentByIDHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	var param map[string]interface{} = make(map[string]interface{})
 	var err error
 	param["id"], err = strconv.Atoi(reNum.FindString(r.URL.Path))
@@ -133,6 +136,7 @@ type createCommentStruct struct {
 //@Router /comments/ [post]
 //@Security ApiKeyAuth
 func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -178,6 +182,7 @@ func createCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/ [put]
 //@Security ApiKeyAuth
 func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -218,6 +223,7 @@ func updateCommentHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /comments/{id} [delete]
 //@Security ApiKeyAuth
 func deleteCommentHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)

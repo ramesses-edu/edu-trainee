@@ -19,11 +19,10 @@ import (
 )
 
 func TestMain(t *testing.M) {
-	a = application.Application{}
-	a.InitApplication()
+	a = application.New()
+	defer application.Close()
 	httphandlers.InitRoutes(a.Router, a.DB)
-	authorization.A = a
-	httphandlers.DB = a.DB
+
 	createTestUser(a.DB)
 	code := t.Run()
 	clearTableUsers()

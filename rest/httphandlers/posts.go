@@ -1,6 +1,7 @@
 package httphandlers
 
 import (
+	"edu-trainee/rest/application"
 	"edu-trainee/rest/authorization"
 	"edu-trainee/rest/models"
 	"encoding/json"
@@ -73,6 +74,7 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/ [get]
 //@Security ApiKeyAuth
 func listPostsHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	var param map[string]interface{} = make(map[string]interface{})
 	userId := r.FormValue("userId")
 	if userId != "" {
@@ -115,6 +117,7 @@ func listPostsHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/{id} [get]
 //@Security ApiKeyAuth
 func getPostByIDHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	var param map[string]interface{} = make(map[string]interface{})
 	var err error
 	param["id"], err = strconv.Atoi(reNum.FindString(r.URL.Path))
@@ -153,6 +156,7 @@ type createPostStruct struct {
 //@Router /posts/ [POST]
 //@Security ApiKeyAuth
 func createPostHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -198,6 +202,7 @@ func createPostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/ [put]
 //@Security ApiKeyAuth
 func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -239,6 +244,7 @@ func updatePostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Router /posts/{id} [delete]
 //@Security ApiKeyAuth
 func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	u := authorization.GetCurrentUser(DB, r)
 	if u.ID == 0 {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -271,6 +277,7 @@ func deletePostHTTP(w http.ResponseWriter, r *http.Request) {
 //@Failure default
 //@Security ApiKeyAuth
 func listPostCommentsHTTP(w http.ResponseWriter, r *http.Request) {
+	DB := application.CurrentApplication().DB
 	var param map[string]interface{} = make(map[string]interface{})
 	var err error
 	param["postId"], err = strconv.Atoi(reNum.FindString(r.URL.Path))

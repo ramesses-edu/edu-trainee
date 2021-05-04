@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"edu-trainee/rest/application"
 	"edu-trainee/rest/models"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 )
 
 func AuthFacebook(w http.ResponseWriter, r *http.Request) {
+	A := application.CurrentApplication()
 	Url, err := url.Parse(A.OauthFacebook.Endpoint.AuthURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -34,6 +36,7 @@ func AuthFacebook(w http.ResponseWriter, r *http.Request) {
 }
 
 func CallbackFacebook(w http.ResponseWriter, r *http.Request) {
+	A := application.CurrentApplication()
 	state := r.FormValue("state")
 	oauthstate, err := r.Cookie("oauthstate")
 	if err != nil {
