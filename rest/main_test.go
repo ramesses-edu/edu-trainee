@@ -21,7 +21,7 @@ import (
 func TestMain(t *testing.M) {
 	a = application.New()
 	defer application.Close()
-	httphandlers.InitRoutes(a.Router, a.DB)
+	httphandlers.InitRoutes(a.Router)
 
 	createTestUser(a.DB)
 	code := t.Run()

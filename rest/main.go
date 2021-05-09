@@ -46,7 +46,7 @@ func main() {
 
 	a = application.New()
 	defer application.Close()
-	httphandlers.InitRoutes(a.Router, a.DB)
+	httphandlers.InitRoutes(a.Router)
 
 	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"http"}

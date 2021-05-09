@@ -1,14 +1,14 @@
 package middleware
 
 import (
+	"edu-trainee/rest/application"
 	"edu-trainee/rest/authorization"
 	"edu-trainee/rest/models"
 	"net/http"
-
-	"gorm.io/gorm"
 )
 
-func Autorization(next http.Handler, db *gorm.DB) http.Handler {
+func Autorization(next http.Handler) http.Handler {
+	db := application.CurrentApplication().DB
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		accessToken := ""
 		accessTokenCookie, err := r.Cookie("UAAT")

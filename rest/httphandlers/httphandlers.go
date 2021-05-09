@@ -13,23 +13,22 @@ import (
 	"text/template"
 
 	httpSwagger "github.com/swaggo/http-swagger"
-	"gorm.io/gorm"
 )
 
 var (
 	reNum *regexp.Regexp = regexp.MustCompile(`\d+`)
 )
 
-func InitRoutes(router *http.ServeMux, db *gorm.DB) {
+func InitRoutes(router *http.ServeMux) {
 	router.Handle("/", mainHandler())
 	router.Handle("/public", http.NotFoundHandler())
 	router.Handle("/public/", publicHandler())
 	router.Handle("/logout/", logoutHandler())
 	router.Handle("/auth/", authentification())
-	router.Handle("/posts", middleware.Autorization(http.HandlerFunc(postsHandler), db))
-	router.Handle("/posts/", middleware.Autorization(http.HandlerFunc(postsHandler), db))
-	router.Handle("/comments", middleware.Autorization(http.HandlerFunc(commentsHandler), db))
-	router.Handle("/comments/", middleware.Autorization(http.HandlerFunc(commentsHandler), db))
+	router.Handle("/posts", middleware.Autorization(http.HandlerFunc(postsHandler)))
+	router.Handle("/posts/", middleware.Autorization(http.HandlerFunc(postsHandler)))
+	router.Handle("/comments", middleware.Autorization(http.HandlerFunc(commentsHandler)))
+	router.Handle("/comments/", middleware.Autorization(http.HandlerFunc(commentsHandler)))
 	router.HandleFunc("/swagger/", httpSwagger.Handler(
 		httpSwagger.URL("localhost/swagger/doc.json"),
 	))
