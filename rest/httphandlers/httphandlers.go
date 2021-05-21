@@ -128,10 +128,8 @@ func logoutHandler() http.Handler {
 }
 
 func responseXML(r *http.Request) bool {
-	for key := range r.Form {
-		if key == "xml" {
-			return true
-		}
+	if _, ok := r.Form["xml"]; ok {
+		return true
 	}
 	return false
 }
